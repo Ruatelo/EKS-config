@@ -1,0 +1,5 @@
+# Fetch the cluster credentials and update your ~/.kube/config
+aws eks update-kubeconfig --name eks-attacks-lab --region us-east-1
+
+# Verify you can see your two t3.small nodes
+kubectl get nodes
