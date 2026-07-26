@@ -1,0 +1,8 @@
+# Create the cluster with 2 worker nodes
+eksctl create cluster \
+  --name ir-lab \
+  --region us-east-1 \
+  --nodegroup-name standard-workers \
+  --node-type t3.small \
+  --nodes 2 \
+  --managed
