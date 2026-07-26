@@ -1,3 +1,4 @@
+
 ```bash
 # Create the cluster with 2 worker nodes
 eksctl create cluster \
