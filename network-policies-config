@@ -1,7 +1,0 @@
-# Enable Network Policies on the VPC CNI
-aws eks update-addon \
-  --cluster-name eks-attacks-lab \
-  --addon-name vpc-cni \
-  --configuration-values '{"enableNetworkPolicy": "true"}' \
-  --resolve-conflicts PRESERVE \
-  --region us-east-1
