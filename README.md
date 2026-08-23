@@ -1,39 +1,30 @@
-# EKS-config
-EKS config commands for the youtube series
+# EKS Security & Attack Scenarios Lab
 
-Creating the cluster
-```bash
-# Create the cluster with 2 worker nodes
-eksctl create cluster \
-  --name eks-attacks-lab \
-  --region us-east-1 \
-  --nodegroup-name standard-workers \
-  --node-type t3.small \
-  --nodes 2 \
-  --managed
-```
-Kubectl config
-```bash
-# Fetch the cluster credentials and update your ~/.kube/config
-aws eks update-kubeconfig --name eks-attacks-lab --region us-east-1
+Hands-on Kubernetes security testing environment and reference architecture for reproducing, detecting, and mitigating real-world Amazon EKS privilege escalation vectors and attack paths.
 
-# Verify you can see your two t3.small nodes
-kubectl get nodes
-```
+---
 
-Network policies configuration
-```bash
-# Create the cluster with 2 worker nodes
-# Enable Network Policies on the VPC CNI
-aws eks update-addon \
-  --cluster-name eks-attacks-lab \
-  --addon-name vpc-cni \
-  --configuration-values '{"enableNetworkPolicy": "true"}' \
-  --resolve-conflicts PRESERVE \
-  --region us-east-1
-```
+## Lab Architecture
 
-Deletign the EKS cluster - clean up
-```bash
-eksctl delete cluster --name eks-attacks-lab
-```
+The base infrastructure deploys a dedicated Amazon EKS cluster configured with:
+- Multi-AZ VPC networking with public and private subnets
+- EKS Control Plane audit logging streamed to AWS CloudWatch
+- AWS CloudTrail integration for IAM management event auditing
+- AWS VPC CNI with native NetworkPolicy enforcement enabled
+
+To deploy the base cluster, see [`initial-lab-deploy-trfm/`](initial-lab-deploy-trfm/).
+
+---
+
+## Scenarios
+
+### [Scenario 1: Pod RCE to Cluster-Admin via Node Token Impersonation](scenario1/)
+Demonstrates how an application-level Remote Code Execution (RCE) vulnerability allows an attacker to query the EC2 Instance Metadata Service (IMDSv2), obtain the worker node's IAM role, authenticate to Kubernetes as `system:node`, and abuse `NodeRestriction` token requests to impersonate a privileged ServiceAccount in a production namespace.
+
+* **Exploit Reference:** [`scenario1/CHEATSHEET.md`](scenario1/CHEATSHEET.md)
+* **CloudWatch Detection Queries:** [`scenario1/DETECTIONS.md`](scenario1/DETECTIONS.md)
+* **Incident Response Runbook:** [`scenario1/IncidentResponse.md`](scenario1/IncidentResponse.md)
+
+---
+
+*Additional attack scenarios will be added sequentially.*
