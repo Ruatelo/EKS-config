@@ -57,10 +57,12 @@ See [CHEATSHEET.md](CHEATSHEET.md) for the step-by-step commands.
 
 ## Mitigations
 
-1. **IMDS hop limit = 1** — blocks pods from reaching instance metadata
-2. **IRSA / EKS Pod Identity** — pods get scoped IAM roles, not the node's
-3. **Least-privilege RBAC** — no `cluster-admin` on workload SAs
-4. **Network Policies** — block `169.254.169.254/32` egress
+1. **IMDS hop limit = 1** — Blocks pods from reaching EC2 instance metadata. *Note: Test thoroughly before enabling cluster-wide, as certain workloads (like older AWS SDKs or legacy EBS CSI drivers) can break without IMDS access.*
+2. **Secure Your Applications** — Remediate application-level vulnerabilities (input validation, avoiding `shell=True`, parameterized commands). Application RCE is the initial breach point of the entire chain.
+3. **Isolate Critical / Privileged Workloads** — Never co-locate sensitive production workloads or privileged ServiceAccounts on the same worker nodes as public-facing/untrusted web applications. Use **dedicated node groups**, **Taints/Tolerations**, and **NodeAffinity**.
+4. **IRSA / EKS Pod Identity** — Assign fine-grained IAM roles directly to pods rather than relying on the underlying EC2 node's instance profile.
+5. **Least-Privilege RBAC** — Never bind `cluster-admin` to workload ServiceAccounts; enforce fine-grained, namespace-scoped `Role` and `RoleBinding` objects.
+6. **Network Policies** — Block pod egress to `169.254.169.254/32` at the CNI layer for defense-in-depth.
 
 ## Clean Up
 

