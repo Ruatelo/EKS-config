@@ -4,13 +4,13 @@ This runbook provides the step-by-step containment, eradication, and post-incide
 
 ---
 
-## 🚨 Immediate Emergency Response (Containment)
+## Immediate Emergency Response (Containment)
 
 Execute these steps in order to immediately cut off the attacker's active access.
 
 ```
 ┌─────────────────────────┐     ┌─────────────────────────┐     ┌─────────────────────────┐
-│ 1. Cut Ingress & Scale  │────▶│ 2. Revoke SA Token &    │────▶│ 3. Revoke Stolen EC2    │
+│ 1. Cut Ingress & Scale  │---->│ 2. Revoke SA Token &    │---->│ 3. Revoke Stolen EC2    │
 │    Vulnerable Pod to 0  │     │    Delete ClusterBinding│     │    Node IAM Credentials │
 └─────────────────────────┘     └─────────────────────────┘     └─────────────────────────┘
 ```
@@ -101,7 +101,7 @@ aws ec2 terminate-instances --instance-ids "$INSTANCE_ID" --region us-east-1
 
 ---
 
-## 🔍 Step 4: Eradication & Backdoor Hunting
+## Step 4: Eradication & Backdoor Hunting
 
 Once containment is complete, verify if the attacker planted persistent backdoors before access was cut:
 
@@ -125,7 +125,7 @@ kubectl get cronjobs,daemonsets,mutatingwebhookconfigurations,validatingwebhookc
 
 ---
 
-## 🛡️ Step 5: Post-Incident Remediation & Hardening (Copy-Pasteable Fixes)
+## Step 5: Post-Incident Remediation & Hardening (Copy-Pasteable Fixes)
 
 ### 1. Enforce IMDSv2 Hop Limit = 1 on Nodes (Blocks Pod IMDS Access)
 ```bash
@@ -221,7 +221,7 @@ aws guardduty update-detector \
 
 ---
 
-## 📋 Containment Cheat Sheet (One-Liner Summary)
+## Containment Cheat Sheet (One-Liner Summary)
 
 ```bash
 # 1. Kill vulnerable app & stop respawn

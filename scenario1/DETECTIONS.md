@@ -1,6 +1,6 @@
 # Threat Detection & CloudWatch Insights Guide for Scenario 1
 
-This guide covers how to detect every stage of the **RCE → IMDSv2 → Node IAM → Pod Impersonation → Cluster-Admin** attack chain, including required log sources, AWS GuardDuty findings, and raw CloudWatch Logs Insights queries.
+This guide covers how to detect every stage of the **RCE -> IMDSv2 -> Node IAM -> Pod Impersonation -> Cluster-Admin** attack chain, including required log sources, AWS GuardDuty findings, and raw CloudWatch Logs Insights queries.
 
 ---
 
@@ -31,6 +31,8 @@ This guide covers how to detect every stage of the **RCE → IMDSv2 → Node IAM
 3. **`Stealth:IAMUser/AnomalousBehavior`** / **`UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS`**
    * Triggered when EC2 instance profile credentials (stolen from IMDS) are used outside of AWS (e.g. from the attacker's laptop).
 
+---
+
 ## 3. Practical Incident Response Workflow (How to Actually Investigate)
 
 Kubernetes audit logs can be overwhelming. Rather than memorizing every API endpoint, real incident response uses a simple 2-step approach:
@@ -44,7 +46,7 @@ Kubernetes audit logs can be overwhelming. Rather than memorizing every API endp
 
 ---
 
-### 🕵️‍♂️ Query 0: The "Trace Attacker Session" Query (Once you have an IP)
+### Query 0: The "Trace Attacker Session" Query (Once you have an IP)
 
 * **Log Group:** `/aws/eks/eks-attacks-lab/cluster`
 * **Why it matters:** Shows the complete attack timeline across every role switch, namespace, and command.
@@ -58,7 +60,7 @@ fields @timestamp, user.username, verb, objectRef.resource, objectRef.subresourc
 
 ---
 
-### 🚨 Query 1: The "Smoking Gun" — Node Impersonating & Requesting SA Tokens (`TokenRequest`)
+### Query 1: The "Smoking Gun" — Node Impersonating & Requesting SA Tokens (`TokenRequest`)
 
 * **Log Group:** `/aws/eks/eks-attacks-lab/cluster`
 * **Why it matters:** A worker node should never interactively request tokens for service accounts in foreign namespaces.
@@ -88,11 +90,11 @@ fields @timestamp, user.username, sourceIPs.0, userAgent, verb, objectRef.resour
 > - `user.username`: `system:node:ip-10-0-3-101.ec2.internal`
 > - `objectRef.namespace`: `prod`
 > - `objectRef.name`: `prod-admin-sa`
-> - `requestObject.spec.boundObjectRef.name`: `payment-processor`
+> - `userAgent`: `kubectl/...`
 
 ---
 
-### 🔍 Query 2: Node Account Performing Abnormal Recon (`get pods -A`, `whoami`)
+### Query 2: Node Account Performing Abnormal Recon (`get pods -A`, `whoami`)
 
 * **Log Group:** `/aws/eks/eks-attacks-lab/cluster`
 * **Why it matters:** Normal kubelets only query pods on their own node using specific internal filters. Listing all namespaces or checking permissions indicates an attacker with stolen node creds.
@@ -113,7 +115,7 @@ fields @timestamp, user.username, sourceIPs.0, userAgent, verb, objectRef.resour
 
 ---
 
-### 🔍 Query 3: Cluster-Admin Abuse by the Pivoted Service Account
+### Query 3: Cluster-Admin Abuse by the Pivoted Service Account
 
 * **Log Group:** `/aws/eks/eks-attacks-lab/cluster`
 * **Why it matters:** Detects unauthorized auditing or privilege verification using the compromised `prod-admin-sa`.
@@ -136,7 +138,7 @@ fields @timestamp, user.username, sourceIPs.0, userAgent, verb, objectRef.resour
 
 ---
 
-### 🔍 Query 4: CloudTrail Stolen Node Credentials Used Externally
+### Query 4: CloudTrail Stolen Node Credentials Used Externally
 
 * **Log Group:** `/aws/cloudtrail/eks-attacks-lab`
 * **Why it matters:** Node IAM role credentials should only originate from EC2 instances within the VPC, not from public residential/VPN IPs.

