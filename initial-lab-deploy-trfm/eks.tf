@@ -82,6 +82,19 @@ resource "aws_iam_role_policy_attachment" "eks_ecr_read_only" {
   role       = aws_iam_role.eks_node_role.name
 }
 
+# Launch template — sets IMDSv2 hop limit to 2 so containerized workloads
+# (EBS CSI driver, IRSA, etc.) can reach the instance metadata service.
+# EC2 default is 1, which blocks IMDS access from pods.
+resource "aws_launch_template" "eks_nodes" {
+  name_prefix = "eks-attacks-lab-"
+
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 2
+  }
+}
+
 # EKS Managed Node Group
 resource "aws_eks_node_group" "standard_workers" {
   cluster_name    = aws_eks_cluster.eks.name
@@ -93,6 +106,11 @@ resource "aws_eks_node_group" "standard_workers" {
   ]
 
   instance_types = ["t3.small"]
+
+  launch_template {
+    id      = aws_launch_template.eks_nodes.id
+    version = aws_launch_template.eks_nodes.latest_version
+  }
 
   scaling_config {
     desired_size = 2

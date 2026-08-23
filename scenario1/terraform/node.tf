@@ -37,12 +37,6 @@ resource "aws_ec2_tag" "environment" {
   value       = "production"
 }
 
-resource "aws_ec2_tag" "namespaces" {
-  resource_id = data.aws_instances.eks_nodes.ids[0]
-  key         = "Namespaces"
-  value       = "default,prod"
-}
-
 resource "aws_ec2_tag" "team" {
   resource_id = data.aws_instances.eks_nodes.ids[0]
   key         = "Team"
