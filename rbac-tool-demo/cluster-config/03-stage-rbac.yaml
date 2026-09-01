@@ -1,0 +1,28 @@
+# stage-sa gets all pod actions but ONLY within the stage namespace.
+# Uses a namespace-scoped Role + RoleBinding (not ClusterRole).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: stage-sa-pod-role
+  namespace: stage
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods/log", "pods/status"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: stage-sa-pod-binding
+  namespace: stage
+subjects:
+  - kind: ServiceAccount
+    name: stage-sa
+    namespace: stage
+roleRef:
+  kind: Role
+  name: stage-sa-pod-role
+  apiGroup: rbac.authorization.k8s.io

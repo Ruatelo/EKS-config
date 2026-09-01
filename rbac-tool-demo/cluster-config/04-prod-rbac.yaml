@@ -1,0 +1,14 @@
+# prod-sa gets the built-in cluster-admin ClusterRole via ClusterRoleBinding.
+# cluster-admin is the most privileged built-in role in Kubernetes.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prod-sa-cluster-admin-binding
+subjects:
+  - kind: ServiceAccount
+    name: prod-sa
+    namespace: prod
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io

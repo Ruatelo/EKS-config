@@ -25,6 +25,12 @@ Demonstrates how an application-level Remote Code Execution (RCE) vulnerability 
 * **CloudWatch Detection Queries:** [`scenario1/DETECTIONS.md`](scenario1/DETECTIONS.md)
 * **Incident Response Runbook:** [`scenario1/IncidentResponse.md`](scenario1/IncidentResponse.md)
 
+### [RBAC Enumeration with rbac-tool (Rapid7)](rbac-tool-demo/)
+Demonstrates how to enumerate, visualize, and audit Kubernetes RBAC configurations using Rapid7's `rbac-tool`. Deploys a Kind cluster with multiple namespaces, service accounts at varying privilege levels, and a least-privilege service account for running the tool itself.
+
+* **Tool Overview & Demo Walkthrough:** [`rbac-tool-demo/README.md`](rbac-tool-demo/README.md)
+* **Cluster Configuration:** [`rbac-tool-demo/cluster-config/`](rbac-tool-demo/cluster-config/)
+
 ---
 
 *Additional attack scenarios will be added sequentially.*

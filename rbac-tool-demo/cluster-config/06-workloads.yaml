@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-dev
+  namespace: dev
+  labels:
+    app: nginx
+    environment: dev
+spec:
+  serviceAccountName: dev-sa
+  containers:
+    - name: nginx
+      image: nginx:latest
+      ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-stage
+  namespace: stage
+  labels:
+    app: nginx
+    environment: stage
+spec:
+  serviceAccountName: stage-sa
+  containers:
+    - name: nginx
+      image: nginx:latest
+      ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-prod
+  namespace: prod
+  labels:
+    app: nginx
+    environment: prod
+spec:
+  serviceAccountName: prod-sa
+  containers:
+    - name: nginx
+      image: nginx:latest
+      ports:
+        - containerPort: 80

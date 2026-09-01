@@ -1,0 +1,49 @@
+# rbac-audit-sa gets the minimum permissions needed to run rbac-tool.
+# This demonstrates the principle of least privilege — you can audit RBAC
+# without being cluster-admin.
+#
+# rbac-tool needs:
+#   - Read access to RBAC objects (roles, clusterroles, bindings)
+#   - Read access to subjects (serviceaccounts, pods, namespaces)
+#   - List access to API resources (for `show` and `generate` commands)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: rbac-audit-role
+rules:
+  # RBAC objects — core of what rbac-tool queries
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources:
+      - roles
+      - clusterroles
+      - rolebindings
+      - clusterrolebindings
+    verbs: ["get", "list", "watch"]
+  # Subjects and namespaces — needed to resolve bindings
+  - apiGroups: [""]
+    resources:
+      - serviceaccounts
+      - namespaces
+      - pods
+    verbs: ["get", "list", "watch"]
+  # Nodes — needed for viz and analysis
+  - apiGroups: [""]
+    resources:
+      - nodes
+    verbs: ["get", "list"]
+  # API discovery — needed for `show`, `generate`, and resource enumeration
+  - nonResourceURLs: ["/api", "/api/*", "/apis", "/apis/*"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: rbac-audit-sa-binding
+subjects:
+  - kind: ServiceAccount
+    name: rbac-audit-sa
+    namespace: rbac-audit
+roleRef:
+  kind: ClusterRole
+  name: rbac-audit-role
+  apiGroup: rbac.authorization.k8s.io
