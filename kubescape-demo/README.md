@@ -32,7 +32,7 @@ kubescape version
 | `kubescape scan framework AllFrameworks` | Scans against all available frameworks at once |
 | `kubescape scan control C-0034` | Scans for a specific control (e.g., C-0034 = automatic mapping of SA) |
 | `kubescape scan -n <namespace>` | Scans only a specific namespace |
-| `kubescape scan *.yaml` | Scans local YAML manifests before they hit the cluster |
+| `kubescape scan .` | Scans local YAML manifests before they hit the cluster |
 | `kubescape scan --format json -o results.json` | Exports scan results to JSON for programmatic use |
 | `kubescape scan --format html -o report.html` | Generates an HTML compliance report |
 | `kubescape scan --compliance-threshold 80` | Fails the scan if the compliance score is below 80% |
@@ -44,7 +44,7 @@ kubescape version
 ### 1. Pre-Deployment Manifest Scanning
 Scan your YAML files before applying them to catch misconfigurations at authoring time.
 ```bash
-kubescape scan vulnerable-workloads/
+kubescape scan .
 ```
 
 ### 2. Cluster Compliance Audit
@@ -86,7 +86,8 @@ kubescape scan --compliance-threshold 70 --format junit -o results.xml
 ### Prerequisites
 - [Kind](https://kind.sigs.k8s.io/) installed
 - kubectl installed
-- Kubescape installed (see above)
+- [Helm](https://helm.sh/docs/intro/install/) installed (required for the Kubescape Operator)
+- Kubescape CLI installed (see above)
 
 ### Deploy the Lab Cluster
 
@@ -95,6 +96,52 @@ Create the Kind cluster and apply all the intentionally insecure workloads.
 kind create cluster --name kubescape-lab --config cluster-config/kind-config.yaml
 kubectl apply -f vulnerable-workloads/
 ```
+
+### Deploy the Kubescape Operator (Required for Framework Scanning)
+
+The Kubescape CLI alone can scan local YAML files, but **scanning a live cluster** with framework scans (NSA, MITRE, CIS) that include host-level controls requires the **Kubescape Operator** deployed inside the cluster. The operator installs:
+
+- **node-agent** — a DaemonSet that runs on each node for host scanning, runtime observability, and eBPF-based relevancy filtering
+- **CRDs** — Custom Resource Definitions for storing scan results (`WorkloadConfigurationScan`, `VulnerabilityManifest`, etc.)
+- **kubescape** — in-cluster scanner that continuously evaluates cluster posture
+- **kubevuln** — image vulnerability scanner
+- **operator** — orchestrates scans and manages lifecycle
+- **storage** — stores scan results as Kubernetes CRs
+
+> **Without the operator**, you will see:
+> ```
+> ❌  failed to init host scanner. error: failed to verify CRD access:
+> the server could not find the requested resource (ensure node-agent is deployed)
+> ```
+
+Install the operator via Helm:
+```bash
+# Add the Kubescape Helm repository
+helm repo add kubescape https://kubescape.github.io/helm-charts/
+helm repo update
+
+# Install the operator with the lab values file
+helm upgrade --install kubescape kubescape/kubescape-operator \
+  -n kubescape --create-namespace \
+  --set clusterName=`kubectl config current-context` \
+  -f cluster-config/kubescape-operator-values.yaml
+```
+
+Verify the operator pods are running:
+```bash
+kubectl get pods -n kubescape
+```
+
+You should see pods like:
+```
+kubescape     kubescape-548d6b4577-xxxxx      1/1     Running   0   60s
+kubescape     kubevuln-6779c9d74b-xxxxx       1/1     Running   0   60s
+kubescape     node-agent-xxxxx                1/1     Running   0   60s
+kubescape     operator-5d745b5b84-xxxxx       1/1     Running   0   60s
+kubescape     storage-59567854fd-xxxxx        1/1     Running   0   60s
+```
+
+Wait for all pods to reach `Running` status before proceeding with scans.
 
 ### What Gets Deployed
 
@@ -159,7 +206,7 @@ kubescape scan framework nsa --format html -o nsa-report.html
 ### 7. Pre-Deployment Scan (Shift Left)
 Scan the YAMLs before applying them — same findings, no cluster needed.
 ```bash
-kubescape scan vulnerable-workloads/
+kubescape scan .
 ```
 
 ---
@@ -167,6 +214,10 @@ kubescape scan vulnerable-workloads/
 ## Clean Up
 
 ```bash
+# Uninstall the Kubescape Operator
+helm uninstall kubescape -n kubescape
+
+# Delete the Kind cluster
 kind delete cluster --name kubescape-lab
 ```
 
@@ -176,7 +227,8 @@ kind delete cluster --name kubescape-lab
 kubespace-demo/
 ├── README.md                                       # This file — tool overview, install, CI/CD, demo walkthrough
 ├── cluster-config/
-│   └── kind-config.yaml                            # Kind cluster with 1 control-plane + 1 worker node
+│   ├── kind-config.yaml                            # Kind cluster with 1 control-plane + 1 worker node
+│   └── kubescape-operator-values.yaml              # Helm values for the Kubescape Operator (node-agent, CRDs, scanning)
 └── vulnerable-workloads/
     ├── 00-namespaces.yaml                          # exposed-dashboard, insecure-apps, dev-team namespaces
     ├── 01-dashboard-no-auth.yaml                   # Kubernetes Dashboard with skip-login enabled

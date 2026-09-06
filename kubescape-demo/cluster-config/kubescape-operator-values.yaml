@@ -1,0 +1,36 @@
+# Kubescape Operator Helm values
+# Deployed into the 'kubescape' namespace via:
+#   helm upgrade --install kubescape kubescape/kubescape-operator \
+#     -n kubescape --create-namespace \
+#     -f cluster-config/kubescape-operator-values.yaml
+#
+# Reference: https://kubescape.io/docs/install-operator/#enabling-capabilities
+
+# ---------- Configuration scanning ----------
+capabilities:
+  # Posture/compliance scanning (NSA, MITRE, CIS)
+  configurationScan: enable
+  # Re-evaluate on every resource change (set to 'disable' for on-demand only)
+  continuousScan: enable
+  # Node-level host scanning — registers the CRDs & deploys node-agent DaemonSet
+  # Required to avoid: "failed to init host scanner … ensure node-agent is deployed"
+  nodeScan: enable
+
+  # ---------- Image vulnerability scanning ----------
+  vulnerabilityScan: enable
+  # Filter CVEs to only those loaded at runtime (requires node-agent eBPF)
+  relevancy: enable
+
+  # ---------- Runtime capabilities ----------
+  runtimeObservability: enable
+  networkPolicyService: enable
+  # Runtime threat detection (eBPF-based anomaly detection)
+  runtimeDetection: disable
+  malwareDetection: disable
+  nodeProfileService: disable
+  seccompProfileService: enable
+
+  # ---------- Other ----------
+  autoUpgrading: disable
+  prometheusExporter: disable
+  vexGeneration: disable
