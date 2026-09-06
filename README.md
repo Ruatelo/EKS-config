@@ -31,6 +31,13 @@ Demonstrates how to enumerate, visualize, and audit Kubernetes RBAC configuratio
 * **Tool Overview & Demo Walkthrough:** [`rbac-tool-demo/README.md`](rbac-tool-demo/README.md)
 * **Cluster Configuration:** [`rbac-tool-demo/cluster-config/`](rbac-tool-demo/cluster-config/)
 
+### [Kubernetes Cluster Auditing with Kubescape](kubespace-demo/)
+Demonstrates how to use Kubescape to scan a deliberately misconfigured Kind cluster for security risks, compliance violations, and common misconfigurations. Deploys an unauthenticated dashboard, privileged containers, overprivileged service accounts, and insecure volume mounts for Kubescape to detect.
+
+* **Tool Overview & Demo Walkthrough:** [`kubespace-demo/README.md`](kubespace-demo/README.md)
+* **Cluster Configuration:** [`kubespace-demo/cluster-config/`](kubespace-demo/cluster-config/)
+* **Vulnerable Workloads:** [`kubespace-demo/vulnerable-workloads/`](kubespace-demo/vulnerable-workloads/)
+
 ---
 
 *Additional attack scenarios will be added sequentially.*

@@ -1,0 +1,65 @@
+# Kubernetes Dashboard deployed with --enable-skip-login and --disable-settings-authorizer.
+# This allows anyone with network access to the dashboard to use it without authentication.
+# Kubescape should flag: no authentication, exposed dashboard, overly permissive RBAC.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kubernetes-dashboard
+  namespace: exposed-dashboard
+---
+# Give the dashboard SA full cluster-admin so it can see everything — intentionally overprivileged.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dashboard-cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: kubernetes-dashboard
+    namespace: exposed-dashboard
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubernetes-dashboard
+  namespace: exposed-dashboard
+  labels:
+    app: kubernetes-dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubernetes-dashboard
+  template:
+    metadata:
+      labels:
+        app: kubernetes-dashboard
+    spec:
+      serviceAccountName: kubernetes-dashboard
+      containers:
+        - name: dashboard
+          image: kubernetesui/dashboard:v2.7.0
+          args:
+            - --enable-skip-login
+            - --disable-settings-authorizer
+            - --namespace=exposed-dashboard
+          ports:
+            - containerPort: 8443
+              protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubernetes-dashboard
+  namespace: exposed-dashboard
+spec:
+  type: NodePort
+  selector:
+    app: kubernetes-dashboard
+  ports:
+    - port: 443
+      targetPort: 8443
+      protocol: TCP

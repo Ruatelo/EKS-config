@@ -1,0 +1,58 @@
+# Overprivileged application — has all capabilities, allows privilege escalation,
+# no read-only root filesystem, no resource limits. Fails every hardening control.
+# Kubescape should flag: C-0046 (insecure capabilities), C-0016 (allow privilege escalation),
+# C-0017 (immutable container filesystem), C-0009 (resource limits).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: overprivileged-app
+  namespace: dev-team
+  labels:
+    app: overprivileged-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: overprivileged-app
+  template:
+    metadata:
+      labels:
+        app: overprivileged-app
+    spec:
+      containers:
+        - name: app
+          image: nginx:latest
+          securityContext:
+            allowPrivilegeEscalation: true
+            capabilities:
+              add: ["ALL"]
+            runAsUser: 0
+            readOnlyRootFilesystem: false
+          # No resource limits — intentional.
+---
+# Completely unrestricted nginx — no security context at all, no resource limits.
+# Represents a "default" deployment that hasn't been hardened.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unrestricted-nginx
+  namespace: dev-team
+  labels:
+    app: unrestricted-nginx
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: unrestricted-nginx
+  template:
+    metadata:
+      labels:
+        app: unrestricted-nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:latest
+          ports:
+            - containerPort: 80
+          # No securityContext — runs as root by default.
+          # No resource requests/limits.

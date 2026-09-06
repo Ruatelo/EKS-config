@@ -1,0 +1,25 @@
+# Privileged container running nginx with full host access.
+# - privileged: true           → container has all kernel capabilities, can escape to host
+# - hostPID: true              → container shares the host's PID namespace (can see/kill host processes)
+# - hostNetwork: true          → container shares the host's network stack (bypass network policies)
+# - runAsUser: 0               → runs as root inside the container
+# Kubescape should flag: C-0057 (privileged container), C-0038 (host PID), C-0041 (host network).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: privileged-nginx
+  namespace: insecure-apps
+  labels:
+    app: privileged-nginx
+    risk: critical
+spec:
+  hostPID: true
+  hostNetwork: true
+  containers:
+    - name: nginx
+      image: nginx:latest
+      securityContext:
+        privileged: true
+        runAsUser: 0
+      ports:
+        - containerPort: 80

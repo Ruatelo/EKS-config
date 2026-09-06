@@ -1,0 +1,2495 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="shortcut icon" href="https://www.rapid7.com/includes/img/favicon.ico" />
+  <title>[Rapid7 | InsightCloudSec] Kubernetes RBAC Power Toys</title>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css?family=Poppins:200,300,400,600,700,800" rel="stylesheet">
+
+  <!-- Icons -->
+  <link href="https://use.fontawesome.com/releases/v5.0.6/css/all.css" rel="stylesheet">
+
+  <!-- Argon CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+</head>
+	<body>
+		<script src="https://d3js.org/d3.v5.min.js"></script>
+		<script src="https://unpkg.com/viz.js@1.8.1/viz.js" type="application/javascript/"></script>
+		<script src="https://unpkg.com/d3-graphviz@2.6.1/build/d3-graphviz.js"></script>
+		
+		<!-- Core -->
+		<script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
+		<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+		<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
+		<!-- script src="/assets/js/argon-design-system.min.js"></script -->
+
+		
+		<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+			<div class="row">
+				<div class="col-6 collapse-brand">
+					<a href="javascript:void(0)">
+						<img src="https://www.rapid7.com/includes/img/Rapid7_logo.svg" height="24">
+					</a>
+				</div>
+				<div class="col-6 collapse-close">
+					<button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-default" aria-controls="navbar-default" aria-expanded="false" aria-label="Toggle navigation">
+						<span></span>
+						<span></span>
+					</button>
+				</div>
+			</div>
+			<div class="container">
+				<a class="navbar-brand" href="#"><img src="https://www.rapid7.com/globalassets/_logos/insightcloudsec-w.svg" height="28"><span style="font-weight: 100; font-style: normal; font-size: 22px;"> | RBAC Tool</span></a>
+				<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-default" aria-controls="navbar-default" aria-expanded="false" aria-label="Toggle navigation">
+					<span class="navbar-toggler-icon"></span>
+				</button>
+				<div class="collapse navbar-collapse" id="navbar-default">
+					<div class="navbar-collapse-header">
+						<div class="row">
+							<div class="col-6 collapse-brand">
+							</div>
+							<div class="col-6 collapse-close">
+								<button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-default" aria-controls="navbar-default" aria-expanded="false" aria-label="Toggle navigation">
+									<span></span>
+									<span></span>
+								</button>
+							</div>
+						</div>
+					</div>
+
+					<ul class="navbar-nav ml-auto">
+						<li class="nav-item">
+							<a class="nav-link nav-link-icon" href="https://github.com/alcideio/rbac-tool" target="_blank">
+								<i class="fab fa-github"></i>
+								<span class="nav-link-inner--text">GitHub</span>
+							</a>
+						</li>
+						<li class="nav-item">
+						  <a class="nav-link nav-link-icon" href="https://www.rapid7.com/products/insightcloudsec/" target="_blank">
+							<i class="fas fa-home"></i>
+							<span class="nav-link-inner--text">Site</span>
+						  </a>
+						</li>
+						<li class="nav-item">
+							<a class="nav-link nav-link-icon" href="https://codelab.alcide.io" target="_blank">
+								<i class="fas fa-code"></i>
+								<span class="nav-link-inner--text">Codelabs</span>
+							</a>
+						</li>
+						<li class="nav-item">
+						  <a class="nav-link nav-link-icon" href="https://twitter.com/rapid7" target="_blank">
+							<i class="fab fa-twitter"></i>
+							<span class="nav-link-inner--text">Twitter</span>
+						  </a>
+						</li>
+				  </ul>
+				</div>
+			</div>
+		</nav>
+
+
+		
+		<div class="container-fluid">
+			<div class="row">
+				<div class="col-3">
+					<div class="card border-light"">
+
+					  <ul class="list-group list-group-flush">
+						<div><li class="list-group-item border-ligh">
+<style>
+  #legend svg {
+    height: auto;
+    width: 100%;
+  }
+</style>
+<div id="legend" style="text-align: center;">
+</div>
+
+<script>
+var dotSrclegend = `digraph  {
+	subgraph cluster_s1 {
+		subgraph cluster_s2 {
+			label="Namespace";style="rounded,dashed";
+			n4[color="#e33a1f",fillcolor="#1b60db",fontcolor="#030303",fontname="Poppins 100 normal",label="Missing Subject\n(Kind)",margin="0.22,0.11",penwidth="2.0",shape="box",style="dotted"];
+			n3[color="#01040a",fillcolor="#1b60db",fontcolor="white",fontname="Poppins 100 normal",label="Subject\n(Kind)",margin="0.22,0.11",penwidth="1.0",shape="box",style="filled"];
+			n6[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="ClusterRole",penwidth="1.0",shape="oval",style="filled,dashed"];
+			n5[color="#01080a",fillcolor="#17b87e",fontcolor="white",fontname="Poppins 100 normal",label="Role",penwidth="1.0",shape="oval",style="filled"];
+			n8[color="#01080a",fillcolor="#00994c",fontcolor="white",fontname="Poppins 100 normal",label="RoleBinding",penwidth="1.0",shape="oval",style="filled"];
+			n9[color="#01080a",fillcolor="#00994c",fontcolor="white",fontname="Poppins 100 normal",label="RoleBinding",penwidth="1.0",shape="oval",style="filled"];
+			n12[fillcolor="#DCDCDC",fontsize="10",label=<Namespace-scoped access rules From ClusterRole>,penwidth="1.0",shape="note"];
+			n11[fillcolor="#DCDCDC",fontsize="10",label=<Namespace-scoped access rules>,penwidth="1.0",shape="note"];
+			n4->n8[dir="back"];
+			n3->n8[dir="back"];
+			n3->n9[dir="back"];
+			n6->n12;
+			n5->n11;
+			n8->n5;
+			n9->n6;
+			
+		}
+		label="Legend";style="invis";
+		n7[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="ClusterRole",penwidth="1.0",shape="oval",style="filled"];
+		n10[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="ClusterRoleBinding",penwidth="1.0",shape="oval",style="filled"];
+		n13[fillcolor="#DCDCDC",fontsize="10",label=<Cluster-scoped access rules>,penwidth="1.0",shape="note"];
+		n7->n13;
+		n10->n7;
+		
+	}
+	fontname="Poppins 100 normal";fontsize="12.00";newrank="true";
+	n3->n10[dir="back"];
+	{rank=same; n5;n6;n7;};
+	
+}
+`;
+
+var graphvizlegend = d3.select("#legend").graphviz()
+    .transition(function () {
+        return d3.transition("main")
+            .ease(d3.easeLinear)
+            .delay(500)
+            .duration(1500);
+    })
+    .logEvents(true)
+    .on("initEnd", renderlegend);
+
+function renderlegend() {
+    console.log('DOT source =', dotSrclegend);
+    dotSrcLines = dotSrclegend.split('\n');
+
+    graphvizlegend
+        .transition(function() {
+            return d3.transition()
+                .delay(100)
+                .duration(1000);
+        })
+        .renderDot(dotSrclegend)
+		.zoom(true);
+}
+
+</script>
+</li></div>
+					  </ul>
+					  <div class="bg-light p-1 text-center">
+						Legend
+					  </div>
+					</div>
+				</div>
+				<div class="col-6">
+					
+<style>
+  #rbacgraph svg {
+    height: auto;
+    width: auto;
+  }
+</style>
+<div id="rbacgraph" style="text-align: center;">
+</div>
+
+<script>
+var dotSrcrbacgraph = `digraph  {
+	subgraph cluster_s16 {
+		label="calico-system";style="rounded,dashed";
+		n17[color="#01040a",fillcolor="#1b60db",fontcolor="white",fontname="Poppins 100 normal",label="calico-apiserver\n(ServiceAccount)",margin="0.22,0.11",penwidth="1.0",shape="box",style="filled"];
+		n77[color="#01040a",fillcolor="#1b60db",fontcolor="white",fontname="Poppins 100 normal",label="calico-cni-plugin\n(ServiceAccount)",margin="0.22,0.11",penwidth="1.0",shape="box",style="filled"];
+		n64[color="#01040a",fillcolor="#1b60db",fontcolor="white",fontname="Poppins 100 normal",label="calico-kube-controllers\n(ServiceAccount)",margin="0.22,0.11",penwidth="1.0",shape="box",style="filled"];
+		n114[color="#01040a",fillcolor="#1b60db",fontcolor="white",fontname="Poppins 100 normal",label="calico-node\n(ServiceAccount)",margin="0.22,0.11",penwidth="1.0",shape="box",style="filled"];
+		n21[color="#01040a",fillcolor="#1b60db",fontcolor="white",fontname="Poppins 100 normal",label="calico-typha\n(ServiceAccount)",margin="0.22,0.11",penwidth="1.0",shape="box",style="filled"];
+		n121[color="#01040a",fillcolor="#1b60db",fontcolor="white",fontname="Poppins 100 normal",label="goldmane\n(ServiceAccount)",margin="0.22,0.11",penwidth="1.0",shape="box",style="filled"];
+		n123[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="tigera-operator-secrets",penwidth="1.0",shape="oval",style="filled,dashed"];
+		n119[color="#01080a",fillcolor="#17b87e",fontcolor="white",fontname="Poppins 100 normal",label="goldmane",penwidth="1.0",shape="oval",style="filled"];
+		n118[color="#01080a",fillcolor="#00994c",fontcolor="white",fontname="Poppins 100 normal",label="goldmane",penwidth="1.0",shape="oval",style="filled"];
+		n122[color="#01080a",fillcolor="#00994c",fontcolor="white",fontname="Poppins 100 normal",label="tigera-operator-secrets",penwidth="1.0",shape="oval",style="filled"];
+		n124[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">secrets</td>
+		<td align="left">*</td>
+		<td align="left">create,update,delete</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+		n120[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">configmaps</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch,create,update,patch</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+		n121->n118[dir="back"];
+		n123->n124;
+		n119->n120;
+		n118->n119;
+		n122->n123;
+		
+	}
+	subgraph cluster_s72 {
+		label="dev";style="rounded,dashed";
+		n73[color="#01040a",fillcolor="#1b60db",fontcolor="white",fontname="Poppins 100 normal",label="dev-sa\n(ServiceAccount)",margin="0.22,0.11",penwidth="1.0",shape="box",style="filled"];
+		
+	}
+	subgraph cluster_s125 {
+		label="kube-public";style="rounded,dashed";
+		n127[color="#01080a",fillcolor="#17b87e",fontcolor="white",fontname="Poppins 100 normal",label="kubeadm:bootstrap-signer-clusterinfo",penwidth="1.0",shape="oval",style="filled"];
+		n126[color="#01080a",fillcolor="#00994c",fontcolor="white",fontname="Poppins 100 normal",label="kubeadm:bootstrap-signer-clusterinfo",penwidth="1.0",shape="oval",style="filled"];
+		n128[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">configmaps</td>
+		<td align="left">cluster-info</td>
+		<td align="left">get</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+		n127->n128;
+		n126->n127;
+		
+	}
+	subgraph cluster_s4 {
+		label="local-path-storage";style="rounded,dashed";
+		n5[color="#01040a",fillcolor="#1b60db",fontcolor="white",fontname="Poppins 100 normal",label="local-path-provisioner-service-account\n(ServiceAccount)",margin="0.22,0.11",penwidth="1.0",shape="box",style="filled"];
+		n131[color="#01080a",fillcolor="#17b87e",fontcolor="white",fontname="Poppins 100 normal",label="local-path-provisioner-role",penwidth="1.0",shape="oval",style="filled"];
+		n130[color="#01080a",fillcolor="#00994c",fontcolor="white",fontname="Poppins 100 normal",label="local-path-provisioner-bind",penwidth="1.0",shape="oval",style="filled"];
+		n132[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">pods</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch,create,patch,update,delete</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+		n5->n130[dir="back"];
+		n131->n132;
+		n130->n131;
+		
+	}
+	subgraph cluster_s116 {
+		label="prod";style="rounded,dashed";
+		n117[color="#01040a",fillcolor="#1b60db",fontcolor="white",fontname="Poppins 100 normal",label="prod-sa\n(ServiceAccount)",margin="0.22,0.11",penwidth="1.0",shape="box",style="filled"];
+		
+	}
+	subgraph cluster_s109 {
+		label="rbac-audit";style="rounded,dashed";
+		n110[color="#01040a",fillcolor="#1b60db",fontcolor="white",fontname="Poppins 100 normal",label="rbac-audit-sa\n(ServiceAccount)",margin="0.22,0.11",penwidth="1.0",shape="box",style="filled"];
+		
+	}
+	subgraph cluster_s133 {
+		label="stage";style="rounded,dashed";
+		n137[color="#01040a",fillcolor="#1b60db",fontcolor="white",fontname="Poppins 100 normal",label="stage-sa\n(ServiceAccount)",margin="0.22,0.11",penwidth="1.0",shape="box",style="filled"];
+		n135[color="#01080a",fillcolor="#17b87e",fontcolor="white",fontname="Poppins 100 normal",label="stage-sa-pod-role",penwidth="1.0",shape="oval",style="filled"];
+		n134[color="#01080a",fillcolor="#00994c",fontcolor="white",fontname="Poppins 100 normal",label="stage-sa-pod-binding",penwidth="1.0",shape="oval",style="filled"];
+		n136[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">pods</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch,create,update,patch,delete</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">pods/log,pods/status</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+		n137->n134[dir="back"];
+		n135->n136;
+		n134->n135;
+		
+	}
+	subgraph cluster_s55 {
+		label="tigera-operator";style="rounded,dashed";
+		n56[color="#01040a",fillcolor="#1b60db",fontcolor="white",fontname="Poppins 100 normal",label="tigera-operator\n(ServiceAccount)",margin="0.22,0.11",penwidth="1.0",shape="box",style="filled"];
+		n139[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="tigera-operator-secrets",penwidth="1.0",shape="oval",style="filled,dashed"];
+		n138[color="#01080a",fillcolor="#00994c",fontcolor="white",fontname="Poppins 100 normal",label="tigera-operator-secrets",penwidth="1.0",shape="oval",style="filled"];
+		n140[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">secrets</td>
+		<td align="left">*</td>
+		<td align="left">create,update,delete</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+		n56->n138[dir="back"];
+		n139->n140;
+		n138->n139;
+		
+	}
+	fontname="Poppins 100 normal";fontsize="12.00";newrank="true";
+	n43[color="#01040a",fillcolor="#1b60db",fontcolor="white",fontname="Poppins 100 normal",label="kubeadm:cluster-admins\n(Group)",margin="0.22,0.11",penwidth="1.0",shape="box",style="filled"];
+	n9[color="#01040a",fillcolor="#1b60db",fontcolor="white",fontname="Poppins 100 normal",label="system:authenticated\n(Group)",margin="0.22,0.11",penwidth="1.0",shape="box",style="filled"];
+	n25[color="#01040a",fillcolor="#1b60db",fontcolor="white",fontname="Poppins 100 normal",label="system:bootstrappers:kubeadm:default-node-token\n(Group)",margin="0.22,0.11",penwidth="1.0",shape="box",style="filled"];
+	n89[color="#01040a",fillcolor="#1b60db",fontcolor="white",fontname="Poppins 100 normal",label="system:masters\n(Group)",margin="0.22,0.11",penwidth="1.0",shape="box",style="filled"];
+	n47[color="#01040a",fillcolor="#1b60db",fontcolor="white",fontname="Poppins 100 normal",label="system:monitoring\n(Group)",margin="0.22,0.11",penwidth="1.0",shape="box",style="filled"];
+	n93[color="#01040a",fillcolor="#1b60db",fontcolor="white",fontname="Poppins 100 normal",label="system:nodes\n(Group)",margin="0.22,0.11",penwidth="1.0",shape="box",style="filled"];
+	n60[color="#01040a",fillcolor="#1b60db",fontcolor="white",fontname="Poppins 100 normal",label="system:serviceaccounts\n(Group)",margin="0.22,0.11",penwidth="1.0",shape="box",style="filled"];
+	n87[color="#01040a",fillcolor="#1b60db",fontcolor="white",fontname="Poppins 100 normal",label="system:unauthenticated\n(Group)",margin="0.22,0.11",penwidth="1.0",shape="box",style="filled"];
+	n39[color="#01040a",fillcolor="#1b60db",fontcolor="white",fontname="Poppins 100 normal",label="kube-apiserver-kubelet-client\n(User)",margin="0.22,0.11",penwidth="1.0",shape="box",style="filled"];
+	n129[color="#01040a",fillcolor="#1b60db",fontcolor="white",fontname="Poppins 100 normal",label="system:anonymous\n(User)",margin="0.22,0.11",penwidth="1.0",shape="box",style="filled"];
+	n68[color="#01040a",fillcolor="#1b60db",fontcolor="white",fontname="Poppins 100 normal",label="system:kube-controller-manager\n(User)",margin="0.22,0.11",penwidth="1.0",shape="box",style="filled"];
+	n51[color="#01040a",fillcolor="#1b60db",fontcolor="white",fontname="Poppins 100 normal",label="system:kube-proxy\n(User)",margin="0.22,0.11",penwidth="1.0",shape="box",style="filled"];
+	n29[color="#01040a",fillcolor="#1b60db",fontcolor="white",fontname="Poppins 100 normal",label="system:kube-scheduler\n(User)",margin="0.22,0.11",penwidth="1.0",shape="box",style="filled"];
+	n75[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="calico-cni-plugin",penwidth="1.0",shape="oval",style="filled"];
+	n31[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="calico-crds",penwidth="1.0",shape="oval",style="filled"];
+	n14[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="calico-extension-apiserver-auth-access",penwidth="1.0",shape="oval",style="filled"];
+	n62[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="calico-kube-controllers",penwidth="1.0",shape="oval",style="filled"];
+	n112[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="calico-node",penwidth="1.0",shape="oval",style="filled"];
+	n66[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="calico-tier-getter",penwidth="1.0",shape="oval",style="filled"];
+	n104[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="calico-tiered-policy-passthrough",penwidth="1.0",shape="oval",style="filled"];
+	n19[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="calico-typha",penwidth="1.0",shape="oval",style="filled"];
+	n101[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="calico-webhook-reader",penwidth="1.0",shape="oval",style="filled"];
+	n41[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="cluster-admin",penwidth="1.0",shape="oval",style="filled"];
+	n70[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="dev-sa-full-access",penwidth="1.0",shape="oval",style="filled"];
+	n98[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="kubeadm:get-nodes",penwidth="1.0",shape="oval",style="filled"];
+	n2[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="local-path-provisioner-role",penwidth="1.0",shape="oval",style="filled"];
+	n107[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="rbac-audit-role",penwidth="1.0",shape="oval",style="filled"];
+	n95[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="system:auth-delegator",penwidth="1.0",shape="oval",style="filled"];
+	n7[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="system:basic-user",penwidth="1.0",shape="oval",style="filled"];
+	n34[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="system:certificates.k8s.io:certificatesigningrequests:nodeclient",penwidth="1.0",shape="oval",style="filled"];
+	n91[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="system:certificates.k8s.io:certificatesigningrequests:selfnodeclient",penwidth="1.0",shape="oval",style="filled"];
+	n11[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="system:discovery",penwidth="1.0",shape="oval",style="filled"];
+	n82[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="system:kube-controller-manager",penwidth="1.0",shape="oval",style="filled"];
+	n27[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="system:kube-scheduler",penwidth="1.0",shape="oval",style="filled"];
+	n37[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="system:kubelet-api-admin",penwidth="1.0",shape="oval",style="filled"];
+	n45[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="system:monitoring",penwidth="1.0",shape="oval",style="filled"];
+	n23[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="system:node-bootstrapper",penwidth="1.0",shape="oval",style="filled"];
+	n49[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="system:node-proxier",penwidth="1.0",shape="oval",style="filled"];
+	n85[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="system:public-info-viewer",penwidth="1.0",shape="oval",style="filled"];
+	n58[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="system:service-account-issuer-discovery",penwidth="1.0",shape="oval",style="filled"];
+	n79[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="system:volume-scheduler",penwidth="1.0",shape="oval",style="filled"];
+	n53[color="#01080a",fillcolor="#006666",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="tigera-operator",penwidth="1.0",shape="oval",style="filled"];
+	n30[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="calico-apiserver-access-calico-crds",penwidth="1.0",shape="oval",style="filled"];
+	n94[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="calico-apiserver-delegate-auth",penwidth="1.0",shape="oval",style="filled"];
+	n100[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="calico-apiserver-webhook-reader",penwidth="1.0",shape="oval",style="filled"];
+	n74[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="calico-cni-plugin",penwidth="1.0",shape="oval",style="filled"];
+	n13[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="calico-extension-apiserver-auth-access",penwidth="1.0",shape="oval",style="filled"];
+	n61[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="calico-kube-controllers",penwidth="1.0",shape="oval",style="filled"];
+	n111[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="calico-node",penwidth="1.0",shape="oval",style="filled"];
+	n65[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="calico-tier-getter",penwidth="1.0",shape="oval",style="filled"];
+	n103[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="calico-tiered-policy-passthrough",penwidth="1.0",shape="oval",style="filled"];
+	n18[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="calico-typha",penwidth="1.0",shape="oval",style="filled"];
+	n88[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="cluster-admin",penwidth="1.0",shape="oval",style="filled"];
+	n69[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="dev-sa-full-access-binding",penwidth="1.0",shape="oval",style="filled"];
+	n36[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="kubeadm:apiserver-kubelet-client",penwidth="1.0",shape="oval",style="filled"];
+	n40[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="kubeadm:cluster-admins",penwidth="1.0",shape="oval",style="filled"];
+	n97[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="kubeadm:get-nodes",penwidth="1.0",shape="oval",style="filled"];
+	n22[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="kubeadm:kubelet-bootstrap",penwidth="1.0",shape="oval",style="filled"];
+	n33[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="kubeadm:node-autoapprove-bootstrap",penwidth="1.0",shape="oval",style="filled"];
+	n90[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="kubeadm:node-autoapprove-certificate-rotation",penwidth="1.0",shape="oval",style="filled"];
+	n1[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="local-path-provisioner-bind",penwidth="1.0",shape="oval",style="filled"];
+	n115[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="prod-sa-cluster-admin-binding",penwidth="1.0",shape="oval",style="filled"];
+	n106[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="rbac-audit-sa-binding",penwidth="1.0",shape="oval",style="filled"];
+	n6[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="system:basic-user",penwidth="1.0",shape="oval",style="filled"];
+	n10[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="system:discovery",penwidth="1.0",shape="oval",style="filled"];
+	n81[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="system:kube-controller-manager",penwidth="1.0",shape="oval",style="filled"];
+	n26[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="system:kube-scheduler",penwidth="1.0",shape="oval",style="filled"];
+	n44[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="system:monitoring",penwidth="1.0",shape="oval",style="filled"];
+	n48[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="system:node-proxier",penwidth="1.0",shape="oval",style="filled"];
+	n84[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="system:public-info-viewer",penwidth="1.0",shape="oval",style="filled"];
+	n57[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="system:service-account-issuer-discovery",penwidth="1.0",shape="oval",style="filled"];
+	n78[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="system:volume-scheduler",penwidth="1.0",shape="oval",style="filled"];
+	n52[color="#01080a",fillcolor="#006633",fontcolor="#f4f4f4",fontname="Poppins 100 normal",label="tigera-operator",penwidth="1.0",shape="oval",style="filled"];
+	n76[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">pods,nodes,namespaces</td>
+		<td align="left">*</td>
+		<td align="left">get</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">pods/status</td>
+		<td align="left">*</td>
+		<td align="left">patch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">crd.projectcalico.org,projectcalico.org</td>
+		<td align="left">blockaffinities,ipamblocks,ipamhandles,ipamconfigurations,ipamconfigs,clusterinformations,ippools,ipreservations</td>
+		<td align="left">*</td>
+		<td align="left">get,list,create,update,delete</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">kubevirt.io</td>
+		<td align="left">virtualmachineinstances,virtualmachines</td>
+		<td align="left">*</td>
+		<td align="left">get</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n32[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">nodes,namespaces,pods,serviceaccounts</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">networking.k8s.io</td>
+		<td align="left">networkpolicies</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">policy.networking.k8s.io</td>
+		<td align="left">clusternetworkpolicies,adminnetworkpolicies,baselineadminnetworkpolicies</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">crd.projectcalico.org,projectcalico.org</td>
+		<td align="left">globalnetworkpolicies,networkpolicies,stagedkubernetesnetworkpolicies,stagednetworkpolicies,stagedglobalnetworkpolicies,caliconodestatuses,clusterinformations,hostendpoints,globalnetworksets,networksets,bgpconfigurations,bgpfilters,bgppeers,felixconfigurations,kubecontrollersconfigurations,ippools,ipreservations,ipamblocks,blockaffinities,ipamconfigs,tiers</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch,create,update,delete,patch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">admissionregistration.k8s.io</td>
+		<td align="left">validatingadmissionpolicies,validatingadmissionpolicybindings</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n15[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">configmaps</td>
+		<td align="left">extension-apiserver-authentication</td>
+		<td align="left">list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">rbac.authorization.k8s.io</td>
+		<td align="left">clusterroles,clusterrolebindings,roles,rolebindings</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n63[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">nodes,endpoints,services</td>
+		<td align="left">*</td>
+		<td align="left">watch,list,get</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">pods</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">services,services/status</td>
+		<td align="left">*</td>
+		<td align="left">get,list,update,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">crd.projectcalico.org,projectcalico.org</td>
+		<td align="left">ipreservations</td>
+		<td align="left">*</td>
+		<td align="left">list</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">crd.projectcalico.org,projectcalico.org</td>
+		<td align="left">blockaffinities,ipamblocks,ipamhandles,networksets,ipamconfigurations,ipamconfigs</td>
+		<td align="left">*</td>
+		<td align="left">get,list,create,update,delete,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">crd.projectcalico.org,projectcalico.org</td>
+		<td align="left">ippools,ippools/status</td>
+		<td align="left">*</td>
+		<td align="left">list,watch,update</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">crd.projectcalico.org,projectcalico.org</td>
+		<td align="left">clusterinformations</td>
+		<td align="left">*</td>
+		<td align="left">get,create,update,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">crd.projectcalico.org,projectcalico.org</td>
+		<td align="left">hostendpoints</td>
+		<td align="left">*</td>
+		<td align="left">get,list,create,update,delete,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">crd.projectcalico.org,projectcalico.org</td>
+		<td align="left">kubecontrollersconfigurations,kubecontrollersconfigurations/status</td>
+		<td align="left">*</td>
+		<td align="left">get,create,list,update,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">crd.projectcalico.org,projectcalico.org</td>
+		<td align="left">tiers</td>
+		<td align="left">*</td>
+		<td align="left">create,update,get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">namespaces</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">apps</td>
+		<td align="left">daemonsets</td>
+		<td align="left">calico-node</td>
+		<td align="left">get</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">crd.projectcalico.org,projectcalico.org</td>
+		<td align="left">networkpolicies,globalnetworkpolicies,stagednetworkpolicies,stagedglobalnetworkpolicies</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch,create,update,delete</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">kubevirt.io</td>
+		<td align="left">virtualmachineinstances,virtualmachines</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">migration.projectcalico.org</td>
+		<td align="left">datastoremigrations,datastoremigrations/status</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch,create,update,patch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">apiextensions.k8s.io</td>
+		<td align="left">customresourcedefinitions</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n113[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">discovery.k8s.io</td>
+		<td align="left">endpointslices</td>
+		<td align="left">*</td>
+		<td align="left">list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">pods,nodes,namespaces</td>
+		<td align="left">*</td>
+		<td align="left">get</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">endpoints,services</td>
+		<td align="left">*</td>
+		<td align="left">watch,list,get</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">nodes/status</td>
+		<td align="left">*</td>
+		<td align="left">patch,update</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">networking.k8s.io</td>
+		<td align="left">networkpolicies</td>
+		<td align="left">*</td>
+		<td align="left">watch,list</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">policy.networking.k8s.io</td>
+		<td align="left">clusternetworkpolicies,adminnetworkpolicies,baselineadminnetworkpolicies</td>
+		<td align="left">*</td>
+		<td align="left">watch,list</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">pods,namespaces,serviceaccounts</td>
+		<td align="left">*</td>
+		<td align="left">watch,list</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">pods/status</td>
+		<td align="left">*</td>
+		<td align="left">patch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">serviceaccounts/token</td>
+		<td align="left">calico-cni-plugin</td>
+		<td align="left">create</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">configmaps</td>
+		<td align="left">*</td>
+		<td align="left">get</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">crd.projectcalico.org,projectcalico.org</td>
+		<td align="left">bgpconfigurations,bgpfilters,bgpfilters,bgppeers,blockaffinities,clusterinformations,felixconfigurations,globalnetworkpolicies,globalnetworksets,hostendpoints,ipamblocks,ippools,ipreservations,networkpolicies,networksets,stagedglobalnetworkpolicies,stagedkubernetesnetworkpolicies,stagednetworkpolicies,tiers</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">crd.projectcalico.org,projectcalico.org</td>
+		<td align="left">caliconodestatuses</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch,update</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">crd.projectcalico.org,projectcalico.org</td>
+		<td align="left">caliconodestatuses/status</td>
+		<td align="left">*</td>
+		<td align="left">update</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">crd.projectcalico.org,projectcalico.org</td>
+		<td align="left">globalbgpconfigs,globalfelixconfigs</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">crd.projectcalico.org,projectcalico.org</td>
+		<td align="left">clusterinformations,felixconfigurations,bgpconfigurations,ippools</td>
+		<td align="left">*</td>
+		<td align="left">create,update</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">crd.projectcalico.org,projectcalico.org</td>
+		<td align="left">tiers</td>
+		<td align="left">*</td>
+		<td align="left">create</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">nodes</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">crd.projectcalico.org,projectcalico.org</td>
+		<td align="left">blockaffinities,ipamblocks,ipamhandles,ipamconfigurations,ipamconfigs</td>
+		<td align="left">*</td>
+		<td align="left">get,list,create,update,delete</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">crd.projectcalico.org,projectcalico.org</td>
+		<td align="left">blockaffinities</td>
+		<td align="left">*</td>
+		<td align="left">watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">kubevirt.io</td>
+		<td align="left">virtualmachineinstancemigrations</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n67[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">projectcalico.org</td>
+		<td align="left">tiers</td>
+		<td align="left">*</td>
+		<td align="left">get</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n105[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">projectcalico.org</td>
+		<td align="left">networkpolicies,globalnetworkpolicies</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch,create,update,patch,delete,deletecollection</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n20[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">discovery.k8s.io</td>
+		<td align="left">endpointslices</td>
+		<td align="left">*</td>
+		<td align="left">list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">pods,nodes,namespaces</td>
+		<td align="left">*</td>
+		<td align="left">get</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">endpoints,services</td>
+		<td align="left">*</td>
+		<td align="left">watch,list,get</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">nodes/status</td>
+		<td align="left">*</td>
+		<td align="left">patch,update</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">networking.k8s.io</td>
+		<td align="left">networkpolicies</td>
+		<td align="left">*</td>
+		<td align="left">watch,list</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">policy.networking.k8s.io</td>
+		<td align="left">clusternetworkpolicies,adminnetworkpolicies,baselineadminnetworkpolicies</td>
+		<td align="left">*</td>
+		<td align="left">watch,list</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">pods,namespaces,serviceaccounts</td>
+		<td align="left">*</td>
+		<td align="left">watch,list</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">pods/status</td>
+		<td align="left">*</td>
+		<td align="left">patch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">crd.projectcalico.org,projectcalico.org</td>
+		<td align="left">bgpconfigurations,bgppeers,bgpfilters,blockaffinities,caliconodestatuses,clusterinformations,felixconfigurations,globalnetworkpolicies,stagedglobalnetworkpolicies,networkpolicies,stagedkubernetesnetworkpolicies,stagednetworkpolicies,globalnetworksets,hostendpoints,ipamblocks,ippools,ipreservations,networksets,tiers</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">crd.projectcalico.org,projectcalico.org</td>
+		<td align="left">globalbgpconfigs,globalfelixconfigs</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">crd.projectcalico.org,projectcalico.org</td>
+		<td align="left">clusterinformations,felixconfigurations,ippools</td>
+		<td align="left">*</td>
+		<td align="left">create,update</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">crd.projectcalico.org,projectcalico.org</td>
+		<td align="left">tiers</td>
+		<td align="left">*</td>
+		<td align="left">create</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">nodes</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">crd.projectcalico.org,projectcalico.org</td>
+		<td align="left">blockaffinities,ipamblocks,ipamhandles</td>
+		<td align="left">*</td>
+		<td align="left">get,list,create,update,delete</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">crd.projectcalico.org,projectcalico.org</td>
+		<td align="left">ipamconfigurations</td>
+		<td align="left">*</td>
+		<td align="left">get</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">crd.projectcalico.org,projectcalico.org</td>
+		<td align="left">blockaffinities</td>
+		<td align="left">*</td>
+		<td align="left">watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">kubevirt.io</td>
+		<td align="left">virtualmachineinstancemigrations</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n102[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">admissionregistration.k8s.io</td>
+		<td align="left">mutatingwebhookconfigurations,validatingwebhookconfigurations</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n42[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">*</td>
+		<td align="left">*</td>
+		<td align="left">*</td>
+		<td align="left">*</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left"></td>
+		<td align="left"></td>
+		<td align="left">*</td>
+		<td align="left">*</td>
+		<td align="left">*</td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n71[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">*</td>
+		<td align="left">*</td>
+		<td align="left">*</td>
+		<td align="left">*</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n99[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">nodes</td>
+		<td align="left">*</td>
+		<td align="left">get</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n3[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">nodes,persistentvolumeclaims,configmaps,pods,pods/log</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">persistentvolumes</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch,create,patch,update,delete</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">events</td>
+		<td align="left">*</td>
+		<td align="left">create,patch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">storage.k8s.io</td>
+		<td align="left">storageclasses</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n108[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">rbac.authorization.k8s.io</td>
+		<td align="left">roles,clusterroles,rolebindings,clusterrolebindings</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">serviceaccounts,namespaces,pods</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">nodes</td>
+		<td align="left">*</td>
+		<td align="left">get,list</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left"></td>
+		<td align="left"></td>
+		<td align="left">*</td>
+		<td align="left">get</td>
+		<td align="left">/api,/api/*,/apis,/apis/*</td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n96[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">authentication.k8s.io</td>
+		<td align="left">tokenreviews</td>
+		<td align="left">*</td>
+		<td align="left">create</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">authorization.k8s.io</td>
+		<td align="left">subjectaccessreviews</td>
+		<td align="left">*</td>
+		<td align="left">create</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n8[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">authorization.k8s.io</td>
+		<td align="left">selfsubjectaccessreviews,selfsubjectrulesreviews</td>
+		<td align="left">*</td>
+		<td align="left">create</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">authentication.k8s.io</td>
+		<td align="left">selfsubjectreviews</td>
+		<td align="left">*</td>
+		<td align="left">create</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n35[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">certificates.k8s.io</td>
+		<td align="left">certificatesigningrequests/nodeclient</td>
+		<td align="left">*</td>
+		<td align="left">create</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n92[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">certificates.k8s.io</td>
+		<td align="left">certificatesigningrequests/selfnodeclient</td>
+		<td align="left">*</td>
+		<td align="left">create</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n12[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left"></td>
+		<td align="left"></td>
+		<td align="left">*</td>
+		<td align="left">get</td>
+		<td align="left">/api,/api/*,/apis,/apis/*,/healthz,/livez,/openapi,/openapi/*,/readyz,/version,/version/</td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n83[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">events.k8s.io,core</td>
+		<td align="left">events</td>
+		<td align="left">*</td>
+		<td align="left">create,patch,update</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">coordination.k8s.io</td>
+		<td align="left">leases</td>
+		<td align="left">*</td>
+		<td align="left">create</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">coordination.k8s.io</td>
+		<td align="left">leases</td>
+		<td align="left">kube-controller-manager</td>
+		<td align="left">get,update</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">secrets,serviceaccounts</td>
+		<td align="left">*</td>
+		<td align="left">create</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">secrets</td>
+		<td align="left">*</td>
+		<td align="left">delete</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">configmaps,namespaces,secrets,serviceaccounts</td>
+		<td align="left">*</td>
+		<td align="left">get</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">secrets,serviceaccounts</td>
+		<td align="left">*</td>
+		<td align="left">update</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">authentication.k8s.io</td>
+		<td align="left">tokenreviews</td>
+		<td align="left">*</td>
+		<td align="left">create</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">authorization.k8s.io</td>
+		<td align="left">subjectaccessreviews</td>
+		<td align="left">*</td>
+		<td align="left">create</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">*</td>
+		<td align="left">*</td>
+		<td align="left">*</td>
+		<td align="left">list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">serviceaccounts/token</td>
+		<td align="left">*</td>
+		<td align="left">create</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n28[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">events.k8s.io,core</td>
+		<td align="left">events</td>
+		<td align="left">*</td>
+		<td align="left">create,patch,update</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">coordination.k8s.io</td>
+		<td align="left">leases</td>
+		<td align="left">*</td>
+		<td align="left">create</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">coordination.k8s.io</td>
+		<td align="left">leases</td>
+		<td align="left">kube-scheduler</td>
+		<td align="left">get,list,update,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">coordination.k8s.io</td>
+		<td align="left">leasecandidates</td>
+		<td align="left">*</td>
+		<td align="left">create,delete,deletecollection,get,list,patch,update,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">nodes</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">pods</td>
+		<td align="left">*</td>
+		<td align="left">delete,get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">bindings,pods/binding</td>
+		<td align="left">*</td>
+		<td align="left">create</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">pods/status</td>
+		<td align="left">*</td>
+		<td align="left">patch,update</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">replicationcontrollers,services</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">extensions,apps</td>
+		<td align="left">replicasets</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">apps</td>
+		<td align="left">statefulsets</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">policy</td>
+		<td align="left">poddisruptionbudgets</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">persistentvolumeclaims,persistentvolumes</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">authentication.k8s.io</td>
+		<td align="left">tokenreviews</td>
+		<td align="left">*</td>
+		<td align="left">create</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">authorization.k8s.io</td>
+		<td align="left">subjectaccessreviews</td>
+		<td align="left">*</td>
+		<td align="left">create</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">storage.k8s.io</td>
+		<td align="left">csinodes</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">storage.k8s.io</td>
+		<td align="left">volumeattachments</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">namespaces</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">storage.k8s.io</td>
+		<td align="left">csidrivers</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">storage.k8s.io</td>
+		<td align="left">csistoragecapacities</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">resource.k8s.io</td>
+		<td align="left">deviceclasses</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">resource.k8s.io</td>
+		<td align="left">resourceclaims</td>
+		<td align="left">*</td>
+		<td align="left">get,list,patch,update,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">resource.k8s.io</td>
+		<td align="left">resourceclaims/status</td>
+		<td align="left">*</td>
+		<td align="left">get,list,patch,update,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">pods/finalizers</td>
+		<td align="left">*</td>
+		<td align="left">update</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">resource.k8s.io</td>
+		<td align="left">resourceslices</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">resource.k8s.io</td>
+		<td align="left">resourceclaims</td>
+		<td align="left">*</td>
+		<td align="left">create,delete</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">resource.k8s.io</td>
+		<td align="left">resourceclaims/binding</td>
+		<td align="left">*</td>
+		<td align="left">patch,update</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n38[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">nodes</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">nodes</td>
+		<td align="left">*</td>
+		<td align="left">proxy</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">nodes/log,nodes/metrics,nodes/proxy,nodes/stats</td>
+		<td align="left">*</td>
+		<td align="left">*</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">nodes/configz,nodes/healthz,nodes/pods</td>
+		<td align="left">*</td>
+		<td align="left">*</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n46[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left"></td>
+		<td align="left"></td>
+		<td align="left">*</td>
+		<td align="left">get</td>
+		<td align="left">/flagz,/healthz,/healthz/*,/livez,/livez/*,/metrics,/metrics/slis,/readyz,/readyz/*,/statusz</td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">nodes/metrics</td>
+		<td align="left">*</td>
+		<td align="left">get</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n24[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">certificates.k8s.io</td>
+		<td align="left">certificatesigningrequests</td>
+		<td align="left">*</td>
+		<td align="left">create,get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n50[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">endpoints,services</td>
+		<td align="left">*</td>
+		<td align="left">list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">nodes</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">events.k8s.io,core</td>
+		<td align="left">events</td>
+		<td align="left">*</td>
+		<td align="left">create,patch,update</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">networking.k8s.io</td>
+		<td align="left">servicecidrs</td>
+		<td align="left">*</td>
+		<td align="left">list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">discovery.k8s.io</td>
+		<td align="left">endpointslices</td>
+		<td align="left">*</td>
+		<td align="left">list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n86[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left"></td>
+		<td align="left"></td>
+		<td align="left">*</td>
+		<td align="left">get</td>
+		<td align="left">/healthz,/livez,/readyz,/version,/version/</td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n59[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left"></td>
+		<td align="left"></td>
+		<td align="left">*</td>
+		<td align="left">get</td>
+		<td align="left">/.well-known/openid-configuration,/.well-known/openid-configuration/,/openid/v1/jwks,/openid/v1/jwks/</td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n80[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">persistentvolumes</td>
+		<td align="left">*</td>
+		<td align="left">get,list,patch,update,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">storage.k8s.io</td>
+		<td align="left">storageclasses</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">persistentvolumeclaims</td>
+		<td align="left">*</td>
+		<td align="left">get,list,patch,update,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n54[fillcolor="#DCDCDC",fontsize="10",label=<	
+		<table border="0" align="left">
+		  <tr>
+			<td align="left" border="1" sides="b">ApiGroup</td>
+			<td align="left" border="1" sides="b">Kind</td>
+			<td align="left" border="1" sides="b">Names</td>
+			<td align="left" border="1" sides="b">Verbs</td>
+			<td align="left" border="1" sides="b">NonResourceURI</td>
+		  </tr>
+		  
+	  <tr>
+		<td align="left">apiextensions.k8s.io</td>
+		<td align="left">customresourcedefinitions</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch,create</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">apiextensions.k8s.io</td>
+		<td align="left">customresourcedefinitions</td>
+		<td align="left">bgpconfigurations.crd.projectcalico.org,bgpfilters.crd.projectcalico.org,bgppeers.crd.projectcalico.org,blockaffinities.crd.projectcalico.org,caliconodestatuses.crd.projectcalico.org,clusterinformations.crd.projectcalico.org,felixconfigurations.crd.projectcalico.org,globalnetworkpolicies.crd.projectcalico.org,stagedglobalnetworkpolicies.crd.projectcalico.org,globalnetworksets.crd.projectcalico.org,hostendpoints.crd.projectcalico.org,ipamblocks.crd.projectcalico.org,ipamconfigs.crd.projectcalico.org,ipamhandles.crd.projectcalico.org,ippools.crd.projectcalico.org,ipreservations.crd.projectcalico.org,kubecontrollersconfigurations.crd.projectcalico.org,networkpolicies.crd.projectcalico.org,stagednetworkpolicies.crd.projectcalico.org,stagedkubernetesnetworkpolicies.crd.projectcalico.org,networksets.crd.projectcalico.org,tiers.crd.projectcalico.org</td>
+		<td align="left">update</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">apiextensions.k8s.io</td>
+		<td align="left">customresourcedefinitions</td>
+		<td align="left">bgpconfigurations.projectcalico.org,bgpfilters.projectcalico.org,bgppeers.projectcalico.org,blockaffinities.projectcalico.org,caliconodestatuses.projectcalico.org,clusterinformations.projectcalico.org,felixconfigurations.projectcalico.org,globalnetworkpolicies.projectcalico.org,stagedglobalnetworkpolicies.projectcalico.org,globalnetworksets.projectcalico.org,hostendpoints.projectcalico.org,ipamblocks.projectcalico.org,ipamconfigurations.projectcalico.org,ipamhandles.projectcalico.org,ippools.projectcalico.org,ipreservations.projectcalico.org,kubecontrollersconfigurations.projectcalico.org,networkpolicies.projectcalico.org,stagednetworkpolicies.projectcalico.org,stagedkubernetesnetworkpolicies.projectcalico.org,networksets.projectcalico.org,tiers.projectcalico.org</td>
+		<td align="left">update</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">apiextensions.k8s.io</td>
+		<td align="left">customresourcedefinitions</td>
+		<td align="left">apiservers.operator.tigera.io,gatewayapis.operator.tigera.io,imagesets.operator.tigera.io,installations.operator.tigera.io,tigerastatuses.operator.tigera.io,whiskers.operator.tigera.io,goldmanes.operator.tigera.io,managementclusterconnections.operator.tigera.io,istios.operator.tigera.io</td>
+		<td align="left">update</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">apiextensions.k8s.io</td>
+		<td align="left">customresourcedefinitions</td>
+		<td align="left">clusternetworkpolicies.policy.networking.k8s.io</td>
+		<td align="left">update,delete</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">namespaces,pods,podtemplates,services,endpoints,events,configmaps,serviceaccounts</td>
+		<td align="left">*</td>
+		<td align="left">create,get,list,update,delete,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">resourcequotas,secrets</td>
+		<td align="left">*</td>
+		<td align="left">list,get,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">resourcequotas</td>
+		<td align="left">calico-critical-pods,tigera-critical-pods</td>
+		<td align="left">create,get,list,update,delete,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">core</td>
+		<td align="left">nodes</td>
+		<td align="left">*</td>
+		<td align="left">get,patch,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">authentication.k8s.io</td>
+		<td align="left">tokenreviews</td>
+		<td align="left">*</td>
+		<td align="left">create</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">rbac.authorization.k8s.io</td>
+		<td align="left">clusterroles,clusterrolebindings,rolebindings,roles</td>
+		<td align="left">*</td>
+		<td align="left">create,get,list,update,delete,watch,bind,escalate</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">apps</td>
+		<td align="left">deployments,daemonsets,statefulsets</td>
+		<td align="left">*</td>
+		<td align="left">create,get,list,patch,update,delete,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">apps</td>
+		<td align="left">deployments/finalizers</td>
+		<td align="left">tigera-operator</td>
+		<td align="left">update</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">operator.tigera.io</td>
+		<td align="left">apiservers,apiservers/finalizers,apiservers/status,gatewayapis,gatewayapis/finalizers,goldmanes,goldmanes/finalizers,goldmanes/status,imagesets,installations,installations/finalizers,installations/status,managementclusterconnections,managementclusterconnections/finalizers,managementclusterconnections/status,tigerastatuses,tigerastatuses/status,tigerastatuses/finalizers,whiskers,whiskers/finalizers,whiskers/status,istios,istios/finalizers,istios/status</td>
+		<td align="left">*</td>
+		<td align="left">get,list,update,patch,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">operator.tigera.io</td>
+		<td align="left">tigerastatuses</td>
+		<td align="left">*</td>
+		<td align="left">create,delete</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">operator.tigera.io</td>
+		<td align="left">installations,apiservers,whiskers,goldmanes</td>
+		<td align="left">*</td>
+		<td align="left">delete</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">networking.k8s.io</td>
+		<td align="left">networkpolicies</td>
+		<td align="left">*</td>
+		<td align="left">create,update,delete,get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">projectcalico.org,crd.projectcalico.org</td>
+		<td align="left">felixconfigurations,bgpconfigurations,ippools</td>
+		<td align="left">*</td>
+		<td align="left">create,patch,list,get,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">projectcalico.org,crd.projectcalico.org</td>
+		<td align="left">kubecontrollersconfigurations,bgpconfigurations,clusterinformations</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">projectcalico.org</td>
+		<td align="left">ippools</td>
+		<td align="left">*</td>
+		<td align="left">create,update,delete,patch,get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">projectcalico.org</td>
+		<td align="left">ipamconfigurations,clusterinformations</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">scheduling.k8s.io</td>
+		<td align="left">priorityclasses</td>
+		<td align="left">*</td>
+		<td align="left">create,get,list,update,delete,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">policy</td>
+		<td align="left">poddisruptionbudgets</td>
+		<td align="left">*</td>
+		<td align="left">create,get,list,update,delete,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">apiregistration.k8s.io</td>
+		<td align="left">apiservices</td>
+		<td align="left">*</td>
+		<td align="left">list,watch,create,update,delete</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">discovery.k8s.io</td>
+		<td align="left">endpointslices</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">admissionregistration.k8s.io</td>
+		<td align="left">validatingwebhookconfigurations,mutatingwebhookconfigurations</td>
+		<td align="left">*</td>
+		<td align="left">create,delete,get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">admissionregistration.k8s.io</td>
+		<td align="left">mutatingwebhookconfigurations</td>
+		<td align="left">envoy-gateway-topology-injector.tigera-gateway</td>
+		<td align="left">update</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">admissionregistration.k8s.io</td>
+		<td align="left">validatingwebhookconfigurations</td>
+		<td align="left">istiod-default-validator,istio-validator-calico-system</td>
+		<td align="left">update</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">admissionregistration.k8s.io</td>
+		<td align="left">validatingadmissionpolicies,validatingadmissionpolicybindings</td>
+		<td align="left">*</td>
+		<td align="left">create,update,delete,get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">coordination.k8s.io</td>
+		<td align="left">leases</td>
+		<td align="left">*</td>
+		<td align="left">create,get,list,update,delete,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">storage.k8s.io</td>
+		<td align="left">csidrivers</td>
+		<td align="left">*</td>
+		<td align="left">list,watch,update,get,create,delete</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">certificates.k8s.io</td>
+		<td align="left">certificatesigningrequests</td>
+		<td align="left">*</td>
+		<td align="left">list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">admissionregistration.k8s.io</td>
+		<td align="left">validatingwebhookconfigurations</td>
+		<td align="left">*</td>
+		<td align="left">create,update,delete,get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">admissionregistration.k8s.io</td>
+		<td align="left">mutatingadmissionpolicies,mutatingadmissionpolicybindings</td>
+		<td align="left">*</td>
+		<td align="left">create,update,delete,get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">policy</td>
+		<td align="left">podsecuritypolicies</td>
+		<td align="left">tigera-operator</td>
+		<td align="left">use</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">policy</td>
+		<td align="left">podsecuritypolicies</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch,create,update,delete</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">projectcalico.org</td>
+		<td align="left">networkpolicies,globalnetworkpolicies,networksets</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch,create,update,patch,delete</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">projectcalico.org</td>
+		<td align="left">tier.networkpolicies,tier.globalnetworkpolicies</td>
+		<td align="left">calico-system.*</td>
+		<td align="left">list,watch,get,create,update,delete</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">projectcalico.org</td>
+		<td align="left">tier.networkpolicies,tier.globalnetworkpolicies</td>
+		<td align="left">*</td>
+		<td align="left">list,watch,get</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">projectcalico.org</td>
+		<td align="left">tiers</td>
+		<td align="left">calico-system</td>
+		<td align="left">get,delete,update</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">projectcalico.org</td>
+		<td align="left">tiers</td>
+		<td align="left">*</td>
+		<td align="left">get,create,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">apiextensions.k8s.io</td>
+		<td align="left">customresourcedefinitions</td>
+		<td align="left">backendlbpolicies.gateway.networking.k8s.io,backendtlspolicies.gateway.networking.k8s.io,gatewayclasses.gateway.networking.k8s.io,gateways.gateway.networking.k8s.io,grpcroutes.gateway.networking.k8s.io,httproutes.gateway.networking.k8s.io,referencegrants.gateway.networking.k8s.io,tcproutes.gateway.networking.k8s.io,tlsroutes.gateway.networking.k8s.io,udproutes.gateway.networking.k8s.io,xbackendtrafficpolicies.gateway.networking.x-k8s.io,listenersets.gateway.networking.k8s.io,xmeshes.gateway.networking.x-k8s.io,backends.gateway.envoyproxy.io,backendtrafficpolicies.gateway.envoyproxy.io,clienttrafficpolicies.gateway.envoyproxy.io,envoyextensionpolicies.gateway.envoyproxy.io,envoypatchpolicies.gateway.envoyproxy.io,envoyproxies.gateway.envoyproxy.io,httproutefilters.gateway.envoyproxy.io,securitypolicies.gateway.envoyproxy.io</td>
+		<td align="left">update</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">gateway.networking.k8s.io</td>
+		<td align="left">gatewayclasses</td>
+		<td align="left">*</td>
+		<td align="left">create,update,delete,list,get,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">gateway.envoyproxy.io</td>
+		<td align="left">envoyproxies</td>
+		<td align="left">*</td>
+		<td align="left">create,update,delete,list,get,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">batch</td>
+		<td align="left">jobs</td>
+		<td align="left">*</td>
+		<td align="left">create,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">batch</td>
+		<td align="left">jobs</td>
+		<td align="left">tigera-gateway-api-gateway-helm-certgen</td>
+		<td align="left">update</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">kubevirt.io</td>
+		<td align="left">virtualmachineinstancemigrations</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">autoscaling</td>
+		<td align="left">horizontalpodautoscalers</td>
+		<td align="left">*</td>
+		<td align="left">create,get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">autoscaling</td>
+		<td align="left">horizontalpodautoscalers</td>
+		<td align="left">istiod</td>
+		<td align="left">update</td>
+		<td align="left"></td>
+	  </tr>
+
+	  <tr>
+		<td align="left">migration.projectcalico.org</td>
+		<td align="left">datastoremigrations</td>
+		<td align="left">*</td>
+		<td align="left">get,list,watch</td>
+		<td align="left"></td>
+	  </tr>
+
+		</table>
+>,penwidth="1.0",shape="note"];
+	n43->n40[dir="back"];
+	n9->n6[dir="back"];
+	n9->n10[dir="back"];
+	n9->n84[dir="back"];
+	n9->n103[dir="back"];
+	n25->n22[dir="back"];
+	n25->n33[dir="back"];
+	n25->n97[dir="back"];
+	n89->n88[dir="back"];
+	n47->n44[dir="back"];
+	n93->n90[dir="back"];
+	n60->n57[dir="back"];
+	n87->n84[dir="back"];
+	n17->n13[dir="back"];
+	n17->n30[dir="back"];
+	n17->n94[dir="back"];
+	n17->n100[dir="back"];
+	n77->n74[dir="back"];
+	n64->n61[dir="back"];
+	n114->n111[dir="back"];
+	n21->n18[dir="back"];
+	n73->n69[dir="back"];
+	n5->n1[dir="back"];
+	n117->n115[dir="back"];
+	n110->n106[dir="back"];
+	n56->n52[dir="back"];
+	n56->n122[dir="back"];
+	n39->n36[dir="back"];
+	n129->n126[dir="back"];
+	n68->n65[dir="back"];
+	n68->n81[dir="back"];
+	n51->n48[dir="back"];
+	n29->n26[dir="back"];
+	n29->n78[dir="back"];
+	n75->n76;
+	n31->n32;
+	n14->n15;
+	n62->n63;
+	n112->n113;
+	n66->n67;
+	n104->n105;
+	n19->n20;
+	n101->n102;
+	n41->n42;
+	n70->n71;
+	n98->n99;
+	n2->n3;
+	n107->n108;
+	n95->n96;
+	n7->n8;
+	n34->n35;
+	n91->n92;
+	n11->n12;
+	n82->n83;
+	n27->n28;
+	n37->n38;
+	n45->n46;
+	n23->n24;
+	n49->n50;
+	n85->n86;
+	n58->n59;
+	n79->n80;
+	n53->n54;
+	n30->n31;
+	n94->n95;
+	n100->n101;
+	n74->n75;
+	n13->n14;
+	n61->n62;
+	n111->n112;
+	n65->n66;
+	n103->n104;
+	n18->n19;
+	n88->n41;
+	n69->n70;
+	n36->n37;
+	n40->n41;
+	n97->n98;
+	n22->n23;
+	n33->n34;
+	n90->n91;
+	n1->n2;
+	n115->n41;
+	n106->n107;
+	n6->n7;
+	n10->n11;
+	n81->n82;
+	n26->n27;
+	n44->n45;
+	n48->n49;
+	n84->n85;
+	n57->n58;
+	n78->n79;
+	n52->n53;
+	{rank=same; n2;n7;n11;n14;n19;n23;n27;n31;n34;n37;n41;n45;n49;n53;n58;n62;n66;n70;n75;n79;n82;n85;n41;n91;n95;n98;n101;n104;n107;n112;n41;n119;n123;n127;n131;n135;n139;};
+	
+}
+`;
+
+var graphvizrbacgraph = d3.select("#rbacgraph").graphviz()
+    .transition(function () {
+        return d3.transition("main")
+            .ease(d3.easeLinear)
+            .delay(500)
+            .duration(1500);
+    })
+    .logEvents(true)
+    .on("initEnd", renderrbacgraph);
+
+function renderrbacgraph() {
+    console.log('DOT source =', dotSrcrbacgraph);
+    dotSrcLines = dotSrcrbacgraph.split('\n');
+
+    graphvizrbacgraph
+        .transition(function() {
+            return d3.transition()
+                .delay(100)
+                .duration(1000);
+        })
+        .renderDot(dotSrcrbacgraph)
+		.zoom(true);
+}
+
+</script>
+
+				</div>
+				<div class="col-3">
+				</div>
+			</div>
+		</div>
+
+
+		
+		<div class="row p20 mt-4">
+					<div class="col-md-4 text-center mt-4">
+						</div>
+					<div class="col-md-4 text-center p10">
+						<div>
+ 							<span>
+								<a href="javascript:void(0)"><img src="https://www.rapid7.com/contentassets/cd8848ed7b7d4ab1818066b23f0d6d0c/r7-insight-wheel2.png" height="256"></a>
+								<p class="mt-4" style="font-weight: 100; font-style: normal; font-size: 18px;">Brought to You by <a target="_blank" href="https://www.rapid7.com/products/insightcloudsec/">Rapid7 InsightCloudSec</a> Kubernetes Obsession</p>
+							</span>
+						</div>
+					</div>
+					<div class="col-md-4 text-center">
+					</div>
+		</div>
+
+
+	</body>
+</html>
+  

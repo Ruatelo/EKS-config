@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: exposed-dashboard
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: insecure-apps
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev-team

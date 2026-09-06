@@ -1,0 +1,32 @@
+# Binds the default service account in insecure-apps to cluster-admin.
+# Every pod in this namespace that doesn't specify a custom SA will automatically
+# get full cluster-admin privileges — the most common RBAC misconfiguration.
+# Kubescape should flag: C-0035 (cluster admin binding), C-0034 (automatic SA mapping).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: insecure-apps-default-sa-admin
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: insecure-apps
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+# A simple workload that inherits the default SA — it gets cluster-admin automatically.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: innocent-app
+  namespace: insecure-apps
+  labels:
+    app: innocent-app
+spec:
+  # No serviceAccountName specified — uses "default", which is now cluster-admin.
+  automountServiceAccountToken: true
+  containers:
+    - name: app
+      image: busybox:latest
+      command: ["sleep", "3600"]

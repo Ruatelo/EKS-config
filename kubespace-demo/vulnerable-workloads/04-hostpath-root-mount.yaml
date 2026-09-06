@@ -1,0 +1,24 @@
+# Pod that mounts the host's root filesystem (/) into the container.
+# The container can read and write anything on the node — /etc/shadow, kubelet config, etc.
+# Kubescape should flag: C-0044 (hostPath mount), C-0048 (hostPath mount with read-write access).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hostpath-pod
+  namespace: insecure-apps
+  labels:
+    app: hostpath-pod
+    risk: critical
+spec:
+  containers:
+    - name: explorer
+      image: busybox:latest
+      command: ["sleep", "3600"]
+      volumeMounts:
+        - name: host-root
+          mountPath: /host-root
+  volumes:
+    - name: host-root
+      hostPath:
+        path: /
+        type: Directory
