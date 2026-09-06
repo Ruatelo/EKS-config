@@ -81,76 +81,6 @@ Fail a pipeline if the cluster or manifests fall below a compliance score.
 kubescape scan --compliance-threshold 70 --format junit -o results.xml
 ```
 
----
-
-## CI/CD Integration
-
-### GitHub Actions
-Add Kubescape to your CI pipeline to block insecure manifests from being deployed.
-```yaml
-name: Kubescape Security Scan
-
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-
-jobs:
-  kubescape-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Kubescape
-        run: curl -s https://raw.githubusercontent.com/kubescape/kubescape/master/install.sh | /bin/bash
-
-      - name: Scan manifests against NSA framework
-        run: kubescape scan framework nsa vulnerable-workloads/ --compliance-threshold 50 --format junit -o results.xml
-
-      - name: Upload scan results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: kubescape-results
-          path: results.xml
-```
-
-### GitLab CI
-```yaml
-kubescape-scan:
-  image: quay.io/kubescape/kubescape-cli:latest
-  stage: test
-  script:
-    - kubescape scan framework nsa vulnerable-workloads/ --compliance-threshold 50 --format junit -o results.xml
-  artifacts:
-    reports:
-      junit: results.xml
-    when: always
-```
-
-### Jenkins (Declarative Pipeline)
-```groovy
-pipeline {
-    agent any
-    stages {
-        stage('Kubescape Scan') {
-            steps {
-                sh 'curl -s https://raw.githubusercontent.com/kubescape/kubescape/master/install.sh | /bin/bash'
-                sh 'kubescape scan framework nsa vulnerable-workloads/ --compliance-threshold 50 --format junit -o results.xml'
-            }
-            post {
-                always {
-                    junit 'results.xml'
-                }
-            }
-        }
-    }
-}
-```
-
----
-
 ## Lab Setup
 
 ### Prerequisites
@@ -178,23 +108,6 @@ kubectl apply -f vulnerable-workloads/
 | Overprivileged app | `dev-team` | Container with `allowPrivilegeEscalation: true`, all capabilities added, no read-only root filesystem |
 | Unrestricted nginx | `dev-team` | No security context, no resource limits, runs as root — fails every hardening control |
 
-### Misconfiguration Map
-
-```mermaid
-graph TD
-    A["Kubernetes Dashboard\n(exposed-dashboard ns)"] -->|"--enable-skip-login"| B["No Authentication\nAnyone can access the dashboard"]
-    C["privileged-nginx\n(insecure-apps ns)"] -->|"privileged: true\nhostPID, hostNetwork"| D["Full Host Breakout\nContainer escapes to node"]
-    E["default SA\n(insecure-apps ns)"] -->|"ClusterRoleBinding"| F["cluster-admin\nEvery pod gets full admin"]
-    G["hostpath-pod\n(insecure-apps ns)"] -->|"hostPath: /"| H["Host Root Mounted\n/host-root inside container"]
-    I["secrets-stealer\n(insecure-apps ns)"] -->|"hostPath: /etc/kubernetes/pki"| J["PKI Certs Exposed\nRead-write access to cluster certs"]
-    K["overprivileged-app\n(dev-team ns)"] -->|"ALL capabilities\nallowPrivilegeEscalation"| L["Privilege Escalation\nFull capability set"]
-    style A fill:#f44336,color:#fff
-    style C fill:#f44336,color:#fff
-    style E fill:#f44336,color:#fff
-    style G fill:#FF9800,color:#fff
-    style I fill:#FF9800,color:#fff
-    style K fill:#4CAF50,color:#fff
-```
 
 ---
 
