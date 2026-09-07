@@ -163,11 +163,11 @@ spec:
               cpu: 100m
               memory: 128Mi
 
-# Deployment 5 — Pod Identity Wildcard
-# Pod using a service account that matches a wildcard Pod Identity
-# association (service_account = "*"). Any SA in the mkat-demo
-# namespace can assume the SecretsManagerReadWrite role.
-# MKAT flags: Pod Identity association with wildcard service account.
+# Deployment 5 — Pod Identity Overprivileged (default SA association)
+# A dedicated SA, but the real vulnerability is in terraform: the Pod Identity
+# association is on the `default` SA in this namespace. The backup-job below
+# (which uses the default SA) silently gets SecretsManager access.
+# MKAT flags: Pod Identity association on default service account.
 ---
 apiVersion: apps/v1
 kind: Deployment

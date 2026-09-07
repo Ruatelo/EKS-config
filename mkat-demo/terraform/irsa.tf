@@ -8,15 +8,48 @@
 #   3. Properly scoped trust policies (StringEquals + specific SA) as secure
 # ---------------------------------------------------------------------------
 
-# --- Data Sources -----------------------------------------------------------
+# --- OIDC Provider (required for IRSA) --------------------------------------
+# The base cluster (initial-lab-deploy-trfm) creates the EKS cluster but does
+# NOT create an IAM OIDC provider. IRSA requires one to federate Kubernetes
+# service account tokens with AWS IAM via sts:AssumeRoleWithWebIdentity.
 
-data "aws_iam_openid_connect_provider" "eks" {
+data "tls_certificate" "eks" {
   url = data.aws_eks_cluster.cluster.identity[0].oidc[0].issuer
 }
 
+resource "aws_iam_openid_connect_provider" "eks" {
+  url             = data.aws_eks_cluster.cluster.identity[0].oidc[0].issuer
+  client_id_list  = ["sts.amazonaws.com"]
+  thumbprint_list = [data.tls_certificate.eks.certificates[0].sha1_fingerprint]
+
+  tags = {
+    Project     = "eks-attacks-lab"
+    Environment = "demo"
+    ManagedBy   = "terraform"
+    Demo        = "mkat"
+  }
+}
+
 locals {
-  oidc_provider_arn = data.aws_iam_openid_connect_provider.eks.arn
+  oidc_provider_arn = aws_iam_openid_connect_provider.eks.arn
   oidc_issuer       = trimprefix(data.aws_eks_cluster.cluster.identity[0].oidc[0].issuer, "https://")
+}
+
+# --- EKS Pod Identity Agent (required for Pod Identity) ---------------------
+# Pod Identity requires the eks-pod-identity-agent addon to be installed.
+# This DaemonSet runs on each node and serves credentials via 169.254.170.23.
+
+resource "aws_eks_addon" "pod_identity_agent" {
+  cluster_name                = var.cluster_name
+  addon_name                  = "eks-pod-identity-agent"
+  resolve_conflicts_on_update = "OVERWRITE"
+
+  tags = {
+    Project     = "eks-attacks-lab"
+    Environment = "demo"
+    ManagedBy   = "terraform"
+    Demo        = "mkat"
+  }
 }
 
 # --- S3 Bucket (realistic target for IAM policies) -------------------------

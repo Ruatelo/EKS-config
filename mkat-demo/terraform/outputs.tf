@@ -18,8 +18,8 @@ output "pod_identity_role_arn" {
   value       = aws_iam_role.pod_identity_role.arn
 }
 
-output "pod_identity_wildcard_role_arn" {
-  description = "ARN of the Pod Identity role (wildcard SA)"
+output "pod_identity_overprivileged_role_arn" {
+  description = "ARN of the Pod Identity role (default SA — overprivileged)"
   value       = aws_iam_role.pod_identity_wildcard_role.arn
 }
 

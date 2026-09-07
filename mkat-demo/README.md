@@ -47,10 +47,10 @@ mkat version
 | IAM Role (IRSA) | `mkat-demo-s3-reader-vulnerable` | ❌ Missing `sub` condition — any pod in the cluster can assume this role |
 | IAM Role (IRSA) | `mkat-demo-s3-admin-wildcard` | ❌ Wildcard `sub` via `StringLike` (`system:serviceaccount:mkat-demo:*`) — any SA in namespace gets S3 Full Access |
 | IAM Role (Pod Identity) | `mkat-demo-pod-identity-role` | ✅ Secure — associated with specific SA `dynamo-reader-sa` |
-| IAM Role (Pod Identity) | `mkat-demo-pod-identity-wildcard` | ❌ Wildcard association (`service_account = "*"`) — any SA in namespace gets SecretsManager access |
+| IAM Role (Pod Identity) | `mkat-demo-pod-identity-overprivileged` | ❌ Associated with `default` SA — every pod without an explicit SA gets SecretsManager access |
 | S3 Bucket | `mkat-demo-data-*` | Realistic target for the IAM policies |
 
-### Kubernetes Resources (kubectl)
+### Kubernetes Resources (Terraform)
 
 | Component | Namespace | Purpose |
 |-----------|-----------|---------|
@@ -58,7 +58,7 @@ mkat version
 | `s3-vulnerable-sa` ServiceAccount | `mkat-demo` | IRSA-annotated — role missing `sub` condition |
 | `s3-wildcard-sa` ServiceAccount | `mkat-demo` | IRSA-annotated — role with wildcard `sub` condition |
 | `dynamo-reader-sa` ServiceAccount | `mkat-demo` | Pod Identity — secure, specific SA association |
-| `secrets-manager-sa` ServiceAccount | `mkat-demo` | Pod Identity — wildcard association |
+| `secrets-manager-sa` ServiceAccount | `mkat-demo` | Pod Identity — dedicated SA (but `default` SA in the namespace also has an association) |
 | `legacy-app-config` ConfigMap | `mkat-demo` | Hardcoded `AKIAIOSFODNN7EXAMPLE` + secret key in plaintext |
 | `backup-cron-config` ConfigMap | `mkat-demo` | Second set of hardcoded AWS credentials with custom key names |
 | `database-credentials` Secret | `mkat-demo` | AWS keys embedded inside a database credential Secret |
@@ -72,7 +72,7 @@ graph TD
     C["s3-vulnerable-sa"] -->|"No sub condition"| D["mkat-demo-s3-reader-vulnerable\n❌ S3 Read Only\n(any pod in cluster can assume)"]
     E["s3-wildcard-sa"] -->|"StringLike (wildcard *)"| F["mkat-demo-s3-admin-wildcard\n❌ S3 Full Access\n(any SA in namespace can assume)"]
     G["dynamo-reader-sa"] -->|"Pod Identity (specific SA)"| H["mkat-demo-pod-identity-role\n✅ DynamoDB Read Only"]
-    I["secrets-manager-sa"] -->|"Pod Identity (wildcard *)"| J["mkat-demo-pod-identity-wildcard\n❌ SecretsManager Read/Write\n(any SA in namespace can assume)"]
+    I["default SA (implicit)"] -->|"Pod Identity (default SA)"| J["mkat-demo-pod-identity-overprivileged\n❌ SecretsManager Read/Write\n(any pod without explicit SA gets this)"]
     style A fill:#4CAF50,color:#fff
     style B fill:#4CAF50,color:#fff
     style C fill:#f44336,color:#fff
@@ -97,14 +97,14 @@ graph TD
 
 ---
 
-## Deploy the Infrastructure
+## Deploy the Lab
 
 ### 1. Update kubeconfig
 ```bash
 aws eks update-kubeconfig --name eks-attacks-lab --region us-east-1
 ```
 
-### 2. Deploy AWS Resources (Terraform)
+### 2. Deploy Everything (Terraform)
 ```bash
 cd terraform/
 terraform init
@@ -112,29 +112,17 @@ terraform plan
 terraform apply
 ```
 
-### 3. Update Service Account Annotations
+> [!NOTE]
+> Everything is managed 100% via Terraform in a single `terraform apply` command:
+> - **AWS Resources**: IAM roles (IRSA & Pod Identity), OIDC provider, EKS Pod Identity Agent add-on, associations, and S3 bucket.
+> - **Kubernetes Resources**: Namespace (`mkat-demo`), 5 ServiceAccounts (with live IAM role ARNs automatically injected into annotations), ConfigMaps & Secret (with test credentials), and all 6 Deployments.
+> No extra bash scripts or `kubectl apply` commands are required!
 
-After `terraform apply`, grab the role ARNs from the output and update the service account annotations in `k8s-manifests/01-service-accounts.yaml`:
-
-```bash
-# Get the role ARNs
-terraform output secure_irsa_role_arn
-terraform output vulnerable_irsa_no_sub_role_arn
-terraform output vulnerable_irsa_wildcard_role_arn
-```
-
-Replace the `<REPLACE_WITH_...>` placeholders in `01-service-accounts.yaml` with the actual ARNs.
-
-### 4. Deploy Kubernetes Resources
-```bash
-kubectl apply -f k8s-manifests/
-```
-
-### 5. Verify Deployments
+### 3. Verify Deployments
 ```bash
 kubectl get all -n mkat-demo
-kubectl get configmaps -n mkat-demo
-kubectl get secrets -n mkat-demo
+kubectl get sa -n mkat-demo
+kubectl get cm,secret -n mkat-demo
 ```
 
 ---
@@ -159,7 +147,7 @@ mkat eks find-role-relationships
 **Expected findings:**
 - `mkat-demo-s3-reader-vulnerable` — assumable by **any service account in the cluster** (missing `sub` condition)
 - `mkat-demo-s3-admin-wildcard` — assumable by **any service account in the `mkat-demo` namespace** (wildcard `sub`)
-- `mkat-demo-pod-identity-wildcard` — Pod Identity association with **wildcard service account** (`*`)
+- `mkat-demo-pod-identity-overprivileged` — Pod Identity association on the **`default` service account** (any pod without an explicit SA gets SecretsManager access)
 - `mkat-demo-s3-reader-secure` — properly scoped (✅ no finding)
 - `mkat-demo-pod-identity-role` — properly scoped (✅ no finding)
 
@@ -181,11 +169,9 @@ mkat eks test-imds
 
 ## Clean Up
 
-```bash
-# Remove Kubernetes resources
-kubectl delete -f k8s-manifests/
+A single `terraform destroy` removes all AWS resources and all Kubernetes workloads cleanly:
 
-# Destroy AWS resources
+```bash
 cd terraform/
 terraform destroy
 ```
@@ -205,14 +191,15 @@ terraform destroy
 mkat-demo/
 ├── README.md                                    # This file — tool overview, install, demo walkthrough
 ├── terraform/
-│   ├── providers.tf                             # AWS + random providers, EKS cluster data sources
+│   ├── providers.tf                             # AWS, Kubernetes, TLS, Random, Local providers & EKS data sources
 │   ├── variables.tf                             # region and cluster_name variables
-│   ├── irsa.tf                                  # OIDC provider, S3 bucket, 3 IRSA roles (secure + 2 vulnerable)
-│   ├── pod-identity.tf                          # 2 Pod Identity roles + associations (secure + wildcard)
+│   ├── irsa.tf                                  # OIDC provider, Pod Identity Agent addon, S3 bucket, 3 IRSA roles (secure + 2 vulnerable)
+│   ├── pod-identity.tf                          # 2 Pod Identity roles + associations (secure + default SA overprivileged)
+│   ├── kubernetes.tf                            # 100% Terraform: namespace, 5 SAs with dynamic ARNs, ConfigMaps, Secret, 6 Deployments
 │   └── outputs.tf                               # Role ARNs, bucket name, kubeconfig command
-└── k8s-manifests/
+└── k8s-manifests/                               # (Reference YAML copies)
     ├── 00-namespace.yaml                        # mkat-demo namespace
-    ├── 01-service-accounts.yaml                 # 5 SAs — IRSA (secure, no-sub, wildcard) + Pod Identity (secure, wildcard)
+    ├── 01-service-accounts.yaml                 # 5 SAs (auto-synced from Terraform)
     ├── 02-hardcoded-secrets.yaml                # 2 ConfigMaps + 1 Secret with fake AWS credentials
     └── 03-deployments.yaml                      # 6 Deployments consuming the SAs, ConfigMaps, and Secrets
 ```

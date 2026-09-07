@@ -39,7 +39,7 @@ Demonstrates how to use Kubescape to scan a deliberately misconfigured Kind clus
 * **Vulnerable Workloads:** [`kubescape-demo/vulnerable-workloads/`](kubescape-demo/vulnerable-workloads/)
 
 ### [EKS IAM Auditing with MKAT (Datadog)](mkat-demo/)
-Demonstrates how to use Datadog's Managed Kubernetes Auditing Toolkit (MKAT) to audit EKS cloud identity configurations. Deploys intentionally misconfigured IRSA trust policies (missing `sub` condition, wildcard `sub`), overly permissive Pod Identity associations (wildcard service account), and hardcoded AWS credentials in ConfigMaps and Secrets for MKAT to detect.
+Demonstrates how to use Datadog's Managed Kubernetes Auditing Toolkit (MKAT) to audit EKS cloud identity configurations. Deploys intentionally misconfigured IRSA trust policies (missing `sub` condition, wildcard `sub`), overly permissive Pod Identity associations (default service account), and hardcoded AWS credentials in ConfigMaps and Secrets for MKAT to detect.
 
 * **Tool Overview & Demo Walkthrough:** [`mkat-demo/README.md`](mkat-demo/README.md)
 * **AWS Infrastructure (Terraform):** [`mkat-demo/terraform/`](mkat-demo/terraform/)
