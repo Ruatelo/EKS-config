@@ -190,16 +190,11 @@ terraform destroy
 ```
 mkat-demo/
 ├── README.md                                    # This file — tool overview, install, demo walkthrough
-├── terraform/
-│   ├── providers.tf                             # AWS, Kubernetes, TLS, Random, Local providers & EKS data sources
-│   ├── variables.tf                             # region and cluster_name variables
-│   ├── irsa.tf                                  # OIDC provider, Pod Identity Agent addon, S3 bucket, 3 IRSA roles (secure + 2 vulnerable)
-│   ├── pod-identity.tf                          # 2 Pod Identity roles + associations (secure + default SA overprivileged)
-│   ├── kubernetes.tf                            # 100% Terraform: namespace, 5 SAs with dynamic ARNs, ConfigMaps, Secret, 6 Deployments
-│   └── outputs.tf                               # Role ARNs, bucket name, kubeconfig command
-└── k8s-manifests/                               # (Reference YAML copies)
-    ├── 00-namespace.yaml                        # mkat-demo namespace
-    ├── 01-service-accounts.yaml                 # 5 SAs (auto-synced from Terraform)
-    ├── 02-hardcoded-secrets.yaml                # 2 ConfigMaps + 1 Secret with fake AWS credentials
-    └── 03-deployments.yaml                      # 6 Deployments consuming the SAs, ConfigMaps, and Secrets
+└── terraform/
+    ├── providers.tf                             # AWS, Kubernetes, TLS, Random providers & EKS data sources
+    ├── variables.tf                             # region and cluster_name variables
+    ├── irsa.tf                                  # OIDC provider, Pod Identity Agent addon, S3 bucket, 3 IRSA roles (secure + 2 vulnerable)
+    ├── pod-identity.tf                          # 2 Pod Identity roles + associations (secure + default SA overprivileged)
+    ├── kubernetes.tf                            # 100% Terraform: namespace, 5 SAs with dynamic ARNs, ConfigMaps, Secret, 6 Deployments
+    └── outputs.tf                               # Role ARNs, bucket name, kubeconfig command
 ```
