@@ -1,0 +1,243 @@
+# -------------------------------------------------------------------
+# Deployments for MKAT Demo
+#
+# Six deployments demonstrating different credential delivery
+# mechanisms and misconfigurations. MKAT's three audit commands
+# will surface findings across these workloads:
+#
+#   find-secrets          → data-processor, backup-job
+#   find-role-relationships → all IRSA and Pod Identity workloads
+#   test-imds             → all pods (tests node IMDS reachability)
+# -------------------------------------------------------------------
+
+# Deployment 1 — IRSA Secure
+# Pod using a service account with a properly-scoped IRSA role.
+# The IAM trust policy uses StringEquals with the exact SA principal.
+# MKAT will report this association as correctly configured.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: s3-reader
+  namespace: mkat-demo
+  labels:
+    app: s3-reader
+    component: irsa-secure
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: s3-reader
+  template:
+    metadata:
+      labels:
+        app: s3-reader
+        component: irsa-secure
+    spec:
+      serviceAccountName: s3-reader-sa
+      containers:
+        - name: s3-reader
+          image: nginx:alpine
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+
+# Deployment 2 — IRSA Vulnerable (no sub condition)
+# Pod using a service account whose IRSA role is missing the `sub`
+# condition in its trust policy. Any pod in the cluster can assume
+# this role by projecting a token from the OIDC provider.
+# MKAT flags: role assumable by any SA in the cluster.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: s3-vulnerable-app
+  namespace: mkat-demo
+  labels:
+    app: s3-vulnerable-app
+    component: irsa-vulnerable
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: s3-vulnerable-app
+  template:
+    metadata:
+      labels:
+        app: s3-vulnerable-app
+        component: irsa-vulnerable
+    spec:
+      serviceAccountName: s3-vulnerable-sa
+      containers:
+        - name: app
+          image: nginx:alpine
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+
+# Deployment 3 — IRSA Wildcard + Hardcoded Credentials (double finding)
+# Legacy data processor that:
+#   1. Uses an IRSA role with a wildcard sub condition (any SA in namespace)
+#   2. Loads hardcoded AWS credentials from the legacy-app-config ConfigMap
+# MKAT find-secrets flags the ConfigMap credentials.
+# MKAT find-role-relationships flags the wildcard IRSA trust policy.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: data-processor
+  namespace: mkat-demo
+  labels:
+    app: data-processor
+    component: hardcoded-creds
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: data-processor
+  template:
+    metadata:
+      labels:
+        app: data-processor
+        component: hardcoded-creds
+    spec:
+      serviceAccountName: s3-wildcard-sa
+      containers:
+        - name: processor
+          image: python:3.11-slim
+          command: ["python", "-c", "import time; time.sleep(3600)"]
+          envFrom:
+            - configMapRef:
+                name: legacy-app-config
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+
+# Deployment 4 — Pod Identity Secure
+# Pod using EKS Pod Identity with a properly-scoped association
+# (specific service account name, not wildcard). Credentials are
+# delivered via the Pod Identity Agent on the node (169.254.170.23).
+# MKAT will report this association as correctly configured.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dynamo-reader
+  namespace: mkat-demo
+  labels:
+    app: dynamo-reader
+    component: pod-identity-secure
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dynamo-reader
+  template:
+    metadata:
+      labels:
+        app: dynamo-reader
+        component: pod-identity-secure
+    spec:
+      serviceAccountName: dynamo-reader-sa
+      containers:
+        - name: dynamo-reader
+          image: amazon/aws-cli:latest
+          command: ["sleep", "3600"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+
+# Deployment 5 — Pod Identity Wildcard
+# Pod using a service account that matches a wildcard Pod Identity
+# association (service_account = "*"). Any SA in the mkat-demo
+# namespace can assume the SecretsManagerReadWrite role.
+# MKAT flags: Pod Identity association with wildcard service account.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secrets-manager-app
+  namespace: mkat-demo
+  labels:
+    app: secrets-manager-app
+    component: pod-identity-wildcard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: secrets-manager-app
+  template:
+    metadata:
+      labels:
+        app: secrets-manager-app
+        component: pod-identity-wildcard
+    spec:
+      serviceAccountName: secrets-manager-sa
+      containers:
+        - name: app
+          image: nginx:alpine
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+
+# Deployment 6 — Backup Job with Hardcoded Credentials
+# Loads AWS credentials from both a ConfigMap and a Secret into
+# environment variables. Uses the default service account (no IRSA,
+# no Pod Identity) — all AWS access relies on the hardcoded keys.
+# MKAT find-secrets flags both credential sources.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backup-job
+  namespace: mkat-demo
+  labels:
+    app: backup-job
+    component: hardcoded-creds
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backup-job
+  template:
+    metadata:
+      labels:
+        app: backup-job
+        component: hardcoded-creds
+    spec:
+      containers:
+        - name: backup
+          image: alpine:latest
+          command: ["sh", "-c", "while true; do echo 'backup running'; sleep 3600; done"]
+          envFrom:
+            - configMapRef:
+                name: backup-cron-config
+            - secretRef:
+                name: database-credentials
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
