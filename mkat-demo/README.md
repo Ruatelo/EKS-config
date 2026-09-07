@@ -36,6 +36,9 @@ mkat version
 
 ## What This Demo Deploys
 
+> [!IMPORTANT]
+> **All AWS credentials in this demo are fake.** The access key IDs (`AKIAIOSFODNN7EXAMPLE`, `AKIAI44QH8DHBEXAMPLE`, `AKIAYRJXG5BB6EXAMPLE`) and secret access keys are [AWS's own documentation example values](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html). They will not authenticate to any AWS account and are safe to commit to version control. They exist solely to trigger MKAT's credential detection patterns.
+
 ### AWS Resources (Terraform)
 
 | Resource | Name | Misconfiguration |
