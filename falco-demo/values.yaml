@@ -1,0 +1,40 @@
+# ---------------------------------------------------------------------------
+# values.yaml — falcosecurity/falco chart (tested with chart 9.2.0 / Falco 0.45.0)
+#
+#   helm upgrade --install falco falcosecurity/falco --version 9.2.0 \
+#     -n falco --create-namespace -f values.yaml
+#
+# The release name MUST be "falco": the falcosidekick ServiceAccount is named
+# "<release>-falcosidekick" and the Pod Identity association targets
+# "falco-falcosidekick".
+# ---------------------------------------------------------------------------
+
+falcosidekick:
+  enabled: true
+
+  # The chart's bundled falcosidekick subchart (0.14.x) ships image 2.32.0.
+  # 2.32.0 builds an AWS config with NO credential provider, so IRSA and
+  # Pod Identity both fail with "MissingAuthenticationToken".
+  # 2.33.0+ uses the AWS SDK default credential chain (supports Pod Identity).
+  image:
+    tag: 2.35.0
+
+  # One replica keeps all logs in a single pod (easier to follow in a demo).
+  replicaCount: 1
+
+  # NOTE: the subchart has no `serviceAccount:` values block. The ServiceAccount
+  # is always named "<release>-falcosidekick" -> "falco-falcosidekick" here.
+
+  config:
+    aws:
+      region: us-east-1
+      checkidentity: true                  # calls sts:GetCallerIdentity at startup
+      # Pod Identity: leave these empty. Setting rolearn with useirsa=true
+      # would annotate the SA for IRSA, which takes precedence in the SDK chain.
+      rolearn: ""
+      accesskeyid: ""
+      secretaccesskey: ""
+      cloudwatchlogs:
+        loggroup: /aws/eks/eks-attacks-lab/falco-alerts   # must already exist (falcosidekick never creates groups)
+        logstream: ""            # empty = falcosidekick creates "falcosidekick-logstream"
+        minimumpriority: ""      # empty = send everything (debug+); e.g. "warning" to reduce noise

@@ -44,6 +44,12 @@ Demonstrates how to use Datadog's Managed Kubernetes Auditing Toolkit (MKAT) to 
 * **Tool Overview & Demo Walkthrough:** [`mkat-demo/README.md`](mkat-demo/README.md)
 * **Lab Environment (100% Terraform):** [`mkat-demo/terraform/`](mkat-demo/terraform/)
 
+### [Runtime Threat Detection with Falco → CloudWatch](falco-demo/)
+Demonstrates how to deploy Falco on EKS and ship runtime alerts through falcosidekick into AWS CloudWatch Logs using EKS Pod Identity. Covers the pitfalls you hit along the way: the chart's default falcosidekick image (2.32.0) not supporting IRSA/Pod Identity, falcosidekick never creating log groups, and log-stream-scoped IAM permissions. Includes a target workload to trigger Falco rules and Logs Insights queries.
+
+* **Tool Overview & Manual Deploy Steps:** [`falco-demo/README.md`](falco-demo/README.md)
+* **Helm Values:** [`falco-demo/values.yaml`](falco-demo/values.yaml)
+
 ---
 
 *Additional attack scenarios will be added sequentially.*
