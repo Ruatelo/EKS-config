@@ -50,6 +50,12 @@ Demonstrates how to deploy Falco on EKS and ship runtime alerts through falcosid
 * **Tool Overview & Manual Deploy Steps:** [`falco-demo/README.md`](falco-demo/README.md)
 * **Helm Values:** [`falco-demo/values.yaml`](falco-demo/values.yaml)
 
+### [Admission Control with OPA Gatekeeper](opa-gatekeeper-demo/)
+Demonstrates how to install OPA Gatekeeper on EKS and enforce an admission policy that denies Pods running as privileged or adding Linux capabilities — common pod-to-node escape primitives. Covers ConstraintTemplates, Constraints, excluding system namespaces, and offline policy testing with `gator` for CI pipelines.
+
+* **Tool Overview & Deploy Steps:** [`opa-gatekeeper-demo/README.md`](opa-gatekeeper-demo/README.md)
+* **Policy (Rego):** [`opa-gatekeeper-demo/constraint-template.yaml`](opa-gatekeeper-demo/constraint-template.yaml)
+
 ---
 
 *Additional attack scenarios will be added sequentially.*
